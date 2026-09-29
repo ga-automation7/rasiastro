@@ -27,7 +27,10 @@ function sanitize(value: unknown, depth = 0): unknown {
   if (value && typeof value === "object") {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value)) {
-      out[k] = !SAFE_KEYS.has(k) && SENSITIVE_KEY.test(k) ? "[redacted]" : sanitize(v, depth + 1);
+      // Allow-listed identifiers (order ids are random UUIDs, not secrets) are kept as-is
+      // so support can correlate logs; everything else is scrubbed.
+      if (SAFE_KEYS.has(k) && (typeof v === "string" || typeof v === "number" || typeof v === "boolean" || v === null)) out[k] = v;
+      else out[k] = SENSITIVE_KEY.test(k) ? "[redacted]" : sanitize(v, depth + 1);
     }
     return out;
   }

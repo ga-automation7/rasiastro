@@ -37,10 +37,21 @@ function entriesBySign(chart: VedicChart, dict: ReportDictionary): Map<SignKey, 
   return map;
 }
 
-function entryText(entries: CellEntry[], x: number, y: number, lineHeight: number, anchor: "start" | "middle"): RawHtml {
+/**
+ * Planet labels for one house/sign, wrapped into rows of `perLine` so crowded houses
+ * (four or five planets together is common) stay inside their box. `centerY` is the
+ * vertical middle of the block of rows.
+ */
+function entryText(entries: CellEntry[], x: number, centerY: number, lineHeight: number, perLine: number): RawHtml {
+  const rows: CellEntry[][] = [];
+  for (let i = 0; i < entries.length; i += perLine) rows.push(entries.slice(i, i + perLine));
+  const firstY = centerY - ((rows.length - 1) * lineHeight) / 2 + 4;
   return join(
-    entries.map((e, i) =>
-      html`<text x="${x}" y="${y + i * lineHeight}" text-anchor="${anchor}" class="chart-planet${e.uncertain ? " chart-uncertain" : ""}">${e.label}${e.uncertain ? "?" : ""}</text>`,
+    rows.map(
+      (row, i) =>
+        html`<text x="${x}" y="${firstY + i * lineHeight}" text-anchor="middle" class="chart-planet">${join(
+          row.map((e, j) => html`<tspan class="${e.uncertain ? "chart-uncertain" : ""}">${j ? " " : ""}${e.label}${e.uncertain ? "?" : ""}</tspan>`),
+        )}</text>`,
     ),
   );
 }
@@ -67,7 +78,7 @@ export function southIndianChartSvg(chart: VedicChart, dict: ReportDictionary, t
     return html`<g>
       <rect x="${x}" y="${y}" width="${cell}" height="${cell}" class="chart-cell"/>
       <text x="${x + 5}" y="${y + 14}" class="chart-sign">${rasiName(dict, sign)}</text>
-      ${entryText(entries.get(sign)!, x + cell / 2, y + 34, 15, "middle")}
+      ${entryText(entries.get(sign)!, x + cell / 2, y + 52, 15, entries.get(sign)!.length > 4 ? 3 : 2)}
     </g>`;
   });
   return html`<svg viewBox="-1 -1 362 362" role="img" aria-label="${title}" class="chart-svg" xmlns="http://www.w3.org/2000/svg">
@@ -111,10 +122,12 @@ export function northIndianChartSvg(chart: VedicChart, dict: ReportDictionary, t
     const nx = inner[0] + (cx - inner[0]) * 0.3;
     const ny = inner[1] + (cy - inner[1]) * 0.3 + 4;
     const list = entries.get(sign)!;
-    const startY = cy - ((list.length - 1) * 13) / 2 + 4;
+    // Top/bottom triangles are widest horizontally; side triangles are narrow, diamonds roomy.
+    const horizontalTriangle = poly.length === 3 && poly.filter((p) => p !== inner).every((p, _, arr) => p[1] === arr[0]![1]);
+    const perLine = poly.length === 4 ? (list.length > 3 ? 2 : 1) : horizontalTriangle ? 3 : 2;
     return html`<g>
       <text x="${nx}" y="${ny}" text-anchor="middle" class="chart-signnum">${signIndex + 1}</text>
-      ${entryText(list, cx, startY, 13, "middle")}
+      ${entryText(list, cx, cy, 13, perLine)}
     </g>`;
   });
   const lines = [
