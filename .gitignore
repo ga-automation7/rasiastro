@@ -1,0 +1,31 @@
+# dependencies
+node_modules/
+
+# next.js / build output
+.next/
+out/
+build/
+next-env.d.ts
+*.tsbuildinfo
+
+# local data (demo database, local report storage, captured demo emails)
+.data/
+
+# owner exports contain personal data - never commit them
+exports/
+
+# environment files (secrets). Only .env.example is committed.
+.env
+.env.*
+!.env.example
+
+# logs & OS files
+npm-debug.log*
+*.log
+.DS_Store
+Thumbs.db
+
+# test / tool output
+coverage/
+.vercel/
+.inngest/
