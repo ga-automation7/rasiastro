@@ -6,6 +6,7 @@ import ExcelJS from "exceljs";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { COMPATIBILITY_CATEGORY_KEYS, type CompatibilityCategory } from "@/config/compatibility";
 import type { VedicChart } from "@/domain/astrology/chart-types";
+import type { NakshatraKey } from "@/domain/astrology/constants";
 import { CompatibilityOrderInputSchema, type CompatibilityOrderInputRaw } from "@/domain/compatibility-input";
 import { quoteCompatibility } from "@/domain/pricing";
 import { analyseIndianPair, combineFacts, friendship, ganaOf, moonSignRelation, nadiOf, taraRelation, yoniOf } from "@/server/astrology/compatibility";
@@ -125,7 +126,7 @@ describe("cross-chart factor tables", () => {
   it("reports a factor as uncertain when the birth time leaves it open", () => {
     const result = combineFacts({ status: "uncertain", candidates: ["aries", "taurus"], atStatedTime: null }, { status: "known", value: "leo" }, moonSignRelation);
     expect(result.status).toBe("uncertain");
-    const same = combineFacts({ status: "uncertain", candidates: ["ashwini", "shatabhisha"], atStatedTime: null }, { status: "known", value: "hasta" }, (a, b) => yoniOf(a) === yoniOf(b));
+    const same = combineFacts<NakshatraKey, NakshatraKey, boolean>({ status: "uncertain", candidates: ["ashwini", "shatabhisha"], atStatedTime: null }, { status: "known", value: "hasta" }, (a, b) => yoniOf(a) === yoniOf(b));
     expect(same).toEqual({ status: "known", value: false });
     expect(combineFacts({ status: "omitted", reason: "birth_time_unknown" }, { status: "known", value: 1 }, (a: number, b) => a + b).status).toBe("omitted");
   });

@@ -1,83 +1,102 @@
 import Link from "next/link";
+import { COPY, PRICE } from "@/content/site-copy";
 
-const FAQ: { q: string; a: React.ReactNode }[] = [
-  {
-    q: "Is astrology scientifically proven?",
-    a: "No. Astrology is an interpretive tradition, not scientifically validated prediction. Our reports are for reflection and self-understanding, written as possibilities rather than certainties.",
-  },
-  {
-    q: "I don't know my exact birth time. Can I still order?",
-    a: "Yes. Choose \"approximate\" or \"I don't know\". We calculate everything that holds for the whole possible time window, clearly mark facts that could have more than one value, and leave out time-sensitive parts such as the Lagna when they cannot be known. We never quietly assume a time.",
-  },
-  {
-    q: "How are the charts calculated?",
-    a: "Planet positions come from an astronomical calculation library, not from AI. Indian reports use the sidereal zodiac with the Lahiri ayanamsa and whole-sign houses; Western reports use the tropical zodiac with Placidus houses. The report states these conventions.",
-  },
-  {
-    q: "What are the Tamil, Kannada and North Indian perspectives?",
-    a: "They present the same calculated chart through regional naming, calendars (Tamil solar months; amanta and purnimanta lunar months) and chart layouts. They are interpretation perspectives, not different calculation systems.",
-  },
-  {
-    q: "How do I receive my report? Do I need an account?",
-    a: (
-      <>
-        No account is needed. After payment you can watch your report being prepared and then open it online. We also email you a secure link and the PDF is available to download. Lost the link?{" "}
-        <Link className="underline" href="/recover">
-          Request a fresh one
-        </Link>
-        .
-      </>
-    ),
-  },
-  {
-    q: "Do you sell remedies, gemstones or rituals?",
-    a: "No. We never ask for payments for remedies, and our reports avoid fear-based predictions. We do not predict illness, accidents or death, and we do not give investment advice.",
-  },
-  {
-    q: "Is my data private?",
-    a: (
-      <>
-        Your birth details are used only to prepare and deliver your report, and are deleted after the retention period described in our{" "}
-        <Link className="underline" href="/privacy">
-          privacy policy
-        </Link>
-        . We do not sell data or use it for advertising.
-      </>
-    ),
-  },
-  {
-    q: "What if something goes wrong?",
-    a: (
-      <>
-        If a report cannot be prepared after payment, we will fix it or refund you - see our{" "}
-        <Link className="underline" href="/refund-policy">
-          refund policy
-        </Link>
-        . You are never charged again because a report needs to be regenerated.
-      </>
-    ),
-  },
-];
+/**
+ * Short, accurate answers. Delivery times come from configuration (set them from
+ * measured live performance). Uses <details>, so it works without JavaScript.
+ */
+export function Faq({ typicalMinutes, maxHours }: { typicalMinutes: number; maxHours: number }) {
+  const items: { q: string; a: React.ReactNode }[] = [
+    {
+      q: "Does this use AI?",
+      a: "Yes. Our calculation engine works out your chart from your birth details. AI then writes the interpretation from that calculated data, your chosen tradition and language, and any notes you add. The AI interprets your chart; it does not calculate or invent it.",
+    },
+    {
+      q: "Does a human astrologer review my report?",
+      a: "No. Reports are calculated and written automatically, and no astrologer reviews them before delivery. Each report is checked automatically for structure, completeness and language. If something looks wrong, write to us and we will look into it.",
+    },
+    {
+      q: "What is included in my Jathagam?",
+      a: "Your Indian report includes your Rasi chart (D1) in fixed-sign and house-based diagrams; your Lagna, Rasi, Nakshatra and pada; planetary placements; Vimshottari dasha periods and relevant Saturn and Jupiter transits; and a written interpretation with Tamil, Kannada and Hindi regional perspectives and a summary. Divisional charts such as Navamsa (D9) are not included.",
+    },
+    {
+      q: "What if I don't know my birth time?",
+      a: "Choose \"I don't know\". We calculate only what holds for the whole day, such as your Rasi and planet signs, and leave out what needs a time, such as the Lagna, houses and exact dasha dates. If something could have changed during the day, we show the possibilities instead of guessing. Approximate times work the same way across the window you choose.",
+    },
+    {
+      q: "Can I choose Indian astrology in English?",
+      a: "Yes. Tradition and language are separate choices: an Indian report in English, a Western report in Tamil, or any other combination.",
+    },
+    {
+      q: "Which languages and regional perspectives are supported?",
+      a: `${COPY.regional.languagesNote} ${COPY.regional.perspectivesNote} ${COPY.regional.notYet}`,
+    },
+    {
+      q: "What does compatibility include?",
+      a: `Both people's charts, the traditional factors or planetary contacts relevant to the connection you choose, and a written reading on communication, shared strengths, potential friction and category-specific dynamics, with prompts to discuss together. It costs ${PRICE.compatibility} for the pair, with an online report and PDF. There is no compatibility score, and the report does not tell anyone whether to marry, separate or work together.`,
+    },
+    {
+      q: "How do I receive my report?",
+      a: (
+        <>
+          After payment your report is prepared in the background, usually within about {typicalMinutes} minutes and at most within {maxHours} hours. You can follow it on your order page, and we email you a
+          private link. The PDF is downloaded from your report page. No account is needed; if you lose the link,{" "}
+          <Link className="underline underline-offset-2" href="/recover">
+            request a fresh one
+          </Link>
+          .
+        </>
+      ),
+    },
+    {
+      q: "What if generation fails?",
+      a: (
+        <>
+          We retry automatically, and a retry never costs anything extra. If your report still cannot be completed, your order page says so and shows how to reach us; we then complete it or refund you under our{" "}
+          <Link className="underline underline-offset-2" href="/refund-policy">
+            Refund &amp; Cancellation policy
+          </Link>
+          .
+        </>
+      ),
+    },
+    {
+      q: "How are birth details handled?",
+      a: (
+        <>
+          We use them only to prepare and deliver your report. Your name, email, phone number and birthplace are not sent to the AI; notes you add are shared with it so it can take them into
+          account. Reports open only through your private link. See the{" "}
+          <Link className="underline underline-offset-2" href="/privacy">
+            Privacy Policy
+          </Link>{" "}
+          for retention and your rights.
+        </>
+      ),
+    },
+  ];
 
-export function Faq() {
   return (
-    <section id="faq" aria-labelledby="faq-heading" className="mx-auto max-w-3xl scroll-mt-24 px-4 py-16 sm:px-6">
-      <p className="eyebrow">FAQ</p>
-      <h2 id="faq-heading" className="mt-2 text-3xl font-semibold text-night-900 sm:text-4xl">
-        Good questions
-      </h2>
-      <div className="mt-8 divide-y divide-ivory-300 border-y border-ivory-300">
-        {FAQ.map((item) => (
-          <details key={item.q} className="group py-4">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-lg font-semibold text-night-900">
-              {item.q}
-              <span aria-hidden="true" className="text-gold-600 transition-transform group-open:rotate-45">
-                +
-              </span>
-            </summary>
-            <div className="mt-3 leading-relaxed text-muted">{item.a}</div>
-          </details>
-        ))}
+    <section id="faq" aria-labelledby="faq-heading" className="section scroll-mt-16">
+      <div className="container-page grid gap-10 lg:grid-cols-[1fr_1.6fr]">
+        <div data-reveal>
+          <h2 id="faq-heading" className="h-section text-ink-950">
+            Questions, answered.
+          </h2>
+          <p className="mt-5 max-w-sm border-l-2 border-gold-400 pl-4 text-[0.98rem] leading-relaxed text-ink-800">{COPY.disclaimer}</p>
+        </div>
+        <div className="divide-y divide-ivory-300 border-y border-ivory-300">
+          {items.map((item) => (
+            <details key={item.q} className="group py-1">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-4 text-left text-[1.05rem] font-semibold text-ink-900 [&::-webkit-details-marker]:hidden">
+                {item.q}
+                <span aria-hidden="true" className="text-xl text-gold-600 transition-transform duration-200 group-open:rotate-45">
+                  +
+                </span>
+              </summary>
+              <div className="pb-5 pr-8 leading-relaxed text-muted">{item.a}</div>
+            </details>
+          ))}
+        </div>
       </div>
     </section>
   );

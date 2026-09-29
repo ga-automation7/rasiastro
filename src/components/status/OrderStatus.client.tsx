@@ -17,7 +17,7 @@ function settled(v: OrderStatusView): boolean {
   return v.generationStatus === "ready" && (v.deliveryStatus === "sent" || v.deliveryStatus === "failed");
 }
 
-export function OrderStatus({ initial, paymentReturned, startFailed }: { initial: OrderStatusView; paymentReturned: boolean; startFailed: boolean }) {
+export function OrderStatus({ initial, paymentReturned, startFailed, typicalMinutes }: { initial: OrderStatusView; paymentReturned: boolean; startFailed: boolean; typicalMinutes: number }) {
   const router = useRouter();
   const [view, setView] = useState(initial);
   const [busy, setBusy] = useState(false);
@@ -78,13 +78,14 @@ export function OrderStatus({ initial, paymentReturned, startFailed }: { initial
         <dl className="grid gap-3 text-[15px] sm:grid-cols-2">
           <div>
             <dt className="text-sm text-muted">Order reference</dt>
-            <dd className="font-mono text-lg font-semibold text-night-900">{view.reference}</dd>
+            <dd className="font-mono text-lg font-semibold text-ink-900">{view.reference}</dd>
           </div>
           <div>
             <dt className="text-sm text-muted">Report</dt>
             <dd>
+              {view.product === "compatibility" ? `Compatibility · ${view.categoryLabel ?? ""} · ` : "Personal report · "}
               {view.traditionTitle} · {view.languageName}
-              {view.includesQuestions ? " · with 3 questions" : ""}
+              {view.includesQuestions ? " · with three questions" : ""}
             </dd>
           </div>
           <div>
@@ -101,7 +102,7 @@ export function OrderStatus({ initial, paymentReturned, startFailed }: { initial
       ) : null}
 
       <section aria-labelledby="progress-heading">
-        <h2 id="progress-heading" className="text-2xl font-semibold text-night-900">
+        <h2 id="progress-heading" className="text-2xl font-semibold text-ink-900">
           Progress
         </h2>
         <ol className="mt-4 space-y-3" aria-live="polite">
@@ -110,12 +111,12 @@ export function OrderStatus({ initial, paymentReturned, startFailed }: { initial
               <span
                 aria-hidden="true"
                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
-                  s.state === "done" ? "bg-success text-white" : s.state === "failed" ? "bg-danger text-white" : s.state === "active" ? "animate-pulse bg-gold-300 text-night-900" : "border border-ivory-300 bg-white"
+                  s.state === "done" ? "bg-success text-white" : s.state === "failed" ? "bg-danger text-white" : s.state === "active" ? "animate-pulse bg-gold-300 text-ink-900" : "border border-ivory-300 bg-white"
                 }`}
               >
                 {ICON[s.state]}
               </span>
-              <span className={s.state === "pending" ? "text-muted" : "font-semibold text-night-900"}>
+              <span className={s.state === "pending" ? "text-muted" : "font-semibold text-ink-900"}>
                 {s.label}
                 <span className="sr-only">: {s.state}</span>
               </span>
@@ -126,7 +127,7 @@ export function OrderStatus({ initial, paymentReturned, startFailed }: { initial
 
       {p === "awaiting_payment" || p === "failed" || p === "cancelled" || p === "expired" ? (
         <div className="card space-y-3 p-5">
-          <p className="font-semibold text-night-900">
+          <p className="font-semibold text-ink-900">
             {p === "awaiting_payment" ? "Payment not completed yet." : p === "failed" ? "The payment did not go through." : p === "cancelled" ? "The payment was cancelled." : "The payment session expired."}
           </p>
           <p className="text-sm text-muted">If money left your account, do not pay again: tap “Check payment status” first. Banks sometimes take a few minutes to confirm.</p>
@@ -134,10 +135,10 @@ export function OrderStatus({ initial, paymentReturned, startFailed }: { initial
             <button type="button" className="btn btn-primary" onClick={() => void retryPayment()} disabled={busy}>
               {busy ? "Opening…" : `Pay ${view.totalLabel} securely`}
             </button>
-            <button type="button" className="btn btn-ghost text-night-800" onClick={() => void refresh(true)}>
+            <button type="button" className="btn btn-ghost text-ink-800" onClick={() => void refresh(true)}>
               Check payment status
             </button>
-            <Link href={`/start?from=${view.orderId}`} className="btn btn-ghost text-night-800">
+            <Link href={`${view.product === "compatibility" ? "/compatibility" : "/start"}?from=${view.orderId}`} className="btn btn-ghost text-ink-800">
               Change details (new order)
             </Link>
           </div>
@@ -146,14 +147,14 @@ export function OrderStatus({ initial, paymentReturned, startFailed }: { initial
 
       {p === "pending" ? (
         <div className="card p-5 text-sm">
-          <p className="font-semibold text-night-900">Your bank is still confirming the payment.</p>
-          <p className="mt-1 text-muted">This page checks automatically. You can also close it - we will email you when your report is ready.</p>
+          <p className="font-semibold text-ink-900">Your bank is still confirming the payment.</p>
+          <p className="mt-1 text-muted">This page checks automatically. You can also close it; we will email you when your report is ready.</p>
         </div>
       ) : null}
 
       {p === "needs_review" ? (
         <div className="card p-5 text-sm">
-          <p className="font-semibold text-night-900">We are checking this payment manually.</p>
+          <p className="font-semibold text-ink-900">We are checking this payment manually.</p>
           <p className="mt-1 text-muted">
             Something did not match our records, so we paused before preparing the report. Please do not pay again. Write to{" "}
             <a className="underline" href={`mailto:${view.supportEmail}?subject=Order ${view.reference}`}>
@@ -166,9 +167,9 @@ export function OrderStatus({ initial, paymentReturned, startFailed }: { initial
 
       {view.generationStatus === "failed" ? (
         <div className="card border-danger/40 p-5 text-sm">
-          <p className="font-semibold text-night-900">We could not finish your report automatically.</p>
+          <p className="font-semibold text-ink-900">We could not finish your report automatically.</p>
           <p className="mt-1 text-muted">
-            Your payment is safe and you will not be charged again. We have been alerted and will either complete your report or refund you. You can also write to{" "}
+            Your payment is safe and a retry never costs anything extra. We have been alerted and will either complete your report or refund you. You can also write to{" "}
             <a className="underline" href={`mailto:${view.supportEmail}?subject=Order ${view.reference}`}>
               {view.supportEmail}
             </a>{" "}
@@ -178,11 +179,11 @@ export function OrderStatus({ initial, paymentReturned, startFailed }: { initial
       ) : null}
 
       {view.reportReady ? (
-        <div className="rounded-2xl bg-night-900 p-6 text-ivory-100">
-          <p className="text-xl font-semibold text-ivory-50">Your report is ready.</p>
+        <div className="rounded-2xl bg-ink-900 p-6 text-ivory-100">
+          <p className="font-display text-2xl font-semibold text-ivory-50">Your report is ready.</p>
           <div className="mt-4 flex flex-wrap gap-3">
             <Link href={`/orders/${view.orderId}/report`} className="btn btn-primary">
-              Read your report
+              Read my report
             </Link>
             {view.pdfReady ? (
               <a href={`/api/orders/${view.orderId}/pdf`} className="btn btn-ghost text-ivory-50">
@@ -190,15 +191,16 @@ export function OrderStatus({ initial, paymentReturned, startFailed }: { initial
               </a>
             ) : null}
           </div>
+          {view.deliveryStatus === "sending" || view.deliveryStatus === "not_sent" ? <p className="mt-4 text-sm text-ivory-300">Sending your private link by email…</p> : null}
           {view.deliveryStatus === "failed" ? (
             <p className="mt-4 text-sm text-gold-200">We could not email your link, but your report is available here. Bookmark this page or use “Find my report” later.</p>
           ) : null}
-          {view.deliveryStatus === "sent" ? <p className="mt-4 text-sm text-ivory-300">We have also emailed you a secure link. Keep it private.</p> : null}
+          {view.deliveryStatus === "sent" ? <p className="mt-4 text-sm text-ivory-300">We have also emailed you a private link. Please keep it to yourself; anyone with it can open the report.</p> : null}
         </div>
       ) : null}
 
       {view.paymentStatus === "paid" && !view.reportReady && view.generationStatus !== "failed" ? (
-        <p className="text-sm text-muted">Reports usually take a few minutes. You can close this page; your email link will bring you back.</p>
+        <p className="text-sm text-muted">Reports usually take up to about {typicalMinutes} minutes. You can close this page; your email link will bring you back.</p>
       ) : null}
     </div>
   );

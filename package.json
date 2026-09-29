@@ -29,10 +29,10 @@
     "ops:delete-order": "tsx scripts/ops-delete-order.ts",
     "ops:purge": "tsx scripts/ops-purge.ts",
     "verify:pdf": "tsx scripts/verify-pdf.ts",
-    "samples:build": "tsx scripts/build-samples.ts",
     "fonts:copy": "tsx scripts/copy-fonts.ts",
     "ops:privacy-export": "tsx scripts/ops-privacy-export.ts",
-    "images:build": "tsx scripts/build-images.ts"
+    "images:build": "tsx scripts/build-images.ts",
+    "fonts:subset": "tsx scripts/subset-fonts.ts"
   },
   "dependencies": {
     "@cashfreepayments/cashfree-js": "1.0.7",
@@ -75,6 +75,7 @@
     "eslint-config-next": "16.3.7",
     "pdfjs-dist": "6.3.289",
     "sharp": "0.35.5",
+    "subset-font": "^2.9.0",
     "tailwindcss": "4.3.3",
     "tsx": "4.23.15",
     "typescript": "6.0.3",

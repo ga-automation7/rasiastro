@@ -1,9 +1,61 @@
 import localFont from "next/font/local";
 
 /**
- * Self-hosted fonts (the same files the PDF embeds). Latin fonts are preloaded;
- * Indic script fonts load only when a page actually uses those characters.
+ * Self-hosted fonts. Only the Latin text and display faces are preloaded.
+ *
+ * - Display: Fraunces (variable weight and optical size), subset to Latin.
+ * - Native-script display: Tiro Tamil / Devanagari Hindi / Telugu / Kannada and Noto
+ *   Serif Malayalam, subset to the few words the site shows in them
+ *   (npm run fonts:subset). Each declares its Unicode range, so a browser downloads
+ *   one only when that script actually appears.
+ * - Body and forms: Noto Sans with its Indic companions (customers may type names in
+ *   any script). Report PDFs embed their own full copies of these fonts.
  */
+export const fraunces = localFont({
+  src: [{ path: "../assets/fonts/display-fraunces.woff2", weight: "100 900", style: "normal" }],
+  variable: "--font-fraunces",
+  display: "swap",
+  adjustFontFallback: "Times New Roman",
+});
+
+// Unicode ranges must be written as literals (next/font requirement).
+
+export const displayTamil = localFont({
+  src: "../assets/fonts/display-tamil.woff2",
+  variable: "--font-display-ta",
+  display: "swap",
+  preload: false,
+  declarations: [{ prop: "unicode-range", value: "U+0B80-0BFF, U+200C-200D, U+25CC" }],
+});
+export const displayDevanagari = localFont({
+  src: "../assets/fonts/display-devanagari.woff2",
+  variable: "--font-display-hi",
+  display: "swap",
+  preload: false,
+  declarations: [{ prop: "unicode-range", value: "U+0900-097F, U+1CD0-1CF9, U+200C-200D, U+25CC, U+A8E0-A8FF" }],
+});
+export const displayTelugu = localFont({
+  src: "../assets/fonts/display-telugu.woff2",
+  variable: "--font-display-te",
+  display: "swap",
+  preload: false,
+  declarations: [{ prop: "unicode-range", value: "U+0C00-0C7F, U+200C-200D, U+25CC" }],
+});
+export const displayKannada = localFont({
+  src: "../assets/fonts/display-kannada.woff2",
+  variable: "--font-display-kn",
+  display: "swap",
+  preload: false,
+  declarations: [{ prop: "unicode-range", value: "U+0C80-0CFF, U+200C-200D, U+25CC" }],
+});
+export const displayMalayalam = localFont({
+  src: "../assets/fonts/display-malayalam.woff2",
+  variable: "--font-display-ml",
+  display: "swap",
+  preload: false,
+  declarations: [{ prop: "unicode-range", value: "U+0D00-0D7F, U+200C-200D, U+25CC" }],
+});
+
 export const notoSans = localFont({
   src: [
     { path: "../assets/fonts/noto-sans-latin-400-normal.woff2", weight: "400", style: "normal" },
@@ -11,15 +63,6 @@ export const notoSans = localFont({
     { path: "../assets/fonts/noto-sans-latin-700-normal.woff2", weight: "700", style: "normal" },
   ],
   variable: "--font-noto",
-  display: "swap",
-});
-
-export const fraunces = localFont({
-  src: [
-    { path: "../assets/fonts/fraunces-latin-500-normal.woff2", weight: "500", style: "normal" },
-    { path: "../assets/fonts/fraunces-latin-600-normal.woff2", weight: "600", style: "normal" },
-  ],
-  variable: "--font-fraunces",
   display: "swap",
 });
 
@@ -31,6 +74,7 @@ export const notoTamil = localFont({
   variable: "--font-tamil",
   display: "swap",
   preload: false,
+  declarations: [{ prop: "unicode-range", value: "U+0B80-0BFF, U+200C-200D, U+25CC" }],
 });
 export const notoDevanagari = localFont({
   src: [
@@ -40,6 +84,7 @@ export const notoDevanagari = localFont({
   variable: "--font-devanagari",
   display: "swap",
   preload: false,
+  declarations: [{ prop: "unicode-range", value: "U+0900-097F, U+1CD0-1CF9, U+200C-200D, U+25CC, U+A8E0-A8FF" }],
 });
 export const notoTelugu = localFont({
   src: [
@@ -49,6 +94,7 @@ export const notoTelugu = localFont({
   variable: "--font-telugu",
   display: "swap",
   preload: false,
+  declarations: [{ prop: "unicode-range", value: "U+0C00-0C7F, U+200C-200D, U+25CC" }],
 });
 export const notoKannada = localFont({
   src: [
@@ -58,6 +104,7 @@ export const notoKannada = localFont({
   variable: "--font-kannada",
   display: "swap",
   preload: false,
+  declarations: [{ prop: "unicode-range", value: "U+0C80-0CFF, U+200C-200D, U+25CC" }],
 });
 export const notoMalayalam = localFont({
   src: [
@@ -67,6 +114,22 @@ export const notoMalayalam = localFont({
   variable: "--font-malayalam",
   display: "swap",
   preload: false,
+  declarations: [{ prop: "unicode-range", value: "U+0D00-0D7F, U+200C-200D, U+25CC" }],
 });
 
-export const fontVariables = [notoSans, fraunces, notoTamil, notoDevanagari, notoTelugu, notoKannada, notoMalayalam].map((f) => f.variable).join(" ");
+export const fontVariables = [
+  fraunces,
+  displayTamil,
+  displayDevanagari,
+  displayTelugu,
+  displayKannada,
+  displayMalayalam,
+  notoSans,
+  notoTamil,
+  notoDevanagari,
+  notoTelugu,
+  notoKannada,
+  notoMalayalam,
+]
+  .map((f) => f.variable)
+  .join(" ");

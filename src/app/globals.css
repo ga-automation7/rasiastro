@@ -1,32 +1,83 @@
 @import "tailwindcss";
 
 /*
- * Rasi Astro design tokens. Restrained celestial palette: deep indigo night, warm
- * ivory paper, and gold used sparingly for emphasis. Fonts are self-hosted
- * (next/font/local) and include Indic scripts.
+ * Rasi Astro design tokens - an Indian editorial palette.
+ *
+ * - Ivory paper for reading, deep ink-indigo for text and night sections.
+ * - Vermilion is reserved for actions (buttons, focus of attention).
+ * - Antique gold for celestial detail and rules; peacock teal only sparingly.
+ * - Colours are matched to the homepage artwork (parchment #efdcb7, night #0a1523).
+ *
+ * Contrast (WCAG AA): ink-900 on ivory-100 15:1, muted on ivory-100 6.4:1,
+ * gold-700 on ivory-100 6.1:1, white on vermilion-600 5.6:1, ivory on ink-950 17:1.
  */
 @theme {
-  --color-night-950: #0d0b26;
-  --color-night-900: #151238;
-  --color-night-800: #201c4f;
-  --color-night-700: #2d2869;
-  --color-night-600: #3d3786;
-  --color-ivory-50: #fefcf8;
-  --color-ivory-100: #faf6ee;
-  --color-ivory-200: #f2eadb;
-  --color-ivory-300: #e7dcc5;
+  --color-ivory-50: #fdfaf3;
+  --color-ivory-100: #f8f1e3;
+  --color-ivory-200: #f1e6cf;
+  --color-ivory-300: #e4d4b3;
+  --color-parchment: #efdcb7;
+
+  --color-ink-950: #0a1523;
+  --color-ink-900: #131b3b;
+  --color-ink-800: #1c2552;
+  --color-ink-700: #28336c;
+  --color-ink-600: #3b4789;
+  --color-ink-300: #aeb5d6;
+
+  /* Older class names kept as aliases of the ink scale. */
+  --color-night-950: #0a1523;
+  --color-night-900: #131b3b;
+  --color-night-800: #1c2552;
+  --color-night-700: #28336c;
+  --color-night-600: #3b4789;
+
+  --color-vermilion-700: #9a2e19;
+  --color-vermilion-600: #b5371d;
+  --color-vermilion-500: #cf4b2c;
+  --color-vermilion-100: #f8e1d8;
+
+  --color-gold-100: #f7ecd2;
   --color-gold-200: #f0dcaa;
-  --color-gold-300: #e3c27a;
-  --color-gold-400: #d4ad5c;
-  --color-gold-600: #a67c2a;
-  --color-gold-700: #7d5a14;
-  --color-ink: #1b1930;
-  --color-muted: #57536d;
+  --color-gold-300: #e3c486;
+  --color-gold-400: #cfa45a;
+  --color-gold-500: #b8893a;
+  --color-gold-600: #9a7128;
+  --color-gold-700: #7a561a;
+
+  --color-teal-700: #154f4c;
+  --color-teal-600: #1d6a66;
+  --color-teal-100: #dcefeb;
+
+  --color-ink: #131b3b;
+  --color-muted: #545a73;
   --color-success: #1f6b45;
   --color-danger: #a1332b;
 
   --font-sans: var(--font-noto), var(--font-tamil), var(--font-devanagari), var(--font-telugu), var(--font-kannada), var(--font-malayalam), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-fraunces), var(--font-tamil), var(--font-devanagari), Georgia, serif;
+  --font-display: var(--font-fraunces), var(--font-display-ta), var(--font-display-hi), var(--font-display-te), var(--font-display-kn), var(--font-display-ml), var(--font-tamil), var(--font-devanagari), Georgia, serif;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+
+  /* Motion: controls 150-250 ms, content 300-500 ms, one soft easing curve. */
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-control: 180ms;
+  --duration-content: 420ms;
+}
+
+:root {
+  /* Fluid type scale (clamp) used by the editorial headings. */
+  --step-hero: clamp(2.35rem, 1.2rem + 4.2vw, 4.6rem);
+  --step-1: clamp(1.9rem, 1.2rem + 2.6vw, 3.2rem);
+  --step-2: clamp(1.45rem, 1.1rem + 1.3vw, 2rem);
+  --step-3: clamp(1.15rem, 1rem + 0.5vw, 1.35rem);
+  --space-section: clamp(4rem, 2.5rem + 6vw, 8rem);
+  --gutter: clamp(1rem, 0.5rem + 2.5vw, 2.5rem);
+  /* Very faint paper grain, drawn once as a small tile (no images to download). */
+  --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .27 0 0 0 0 .15 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 @layer base {
@@ -35,20 +86,36 @@
     scroll-behavior: smooth;
   }
   body {
-    background: var(--color-ivory-100);
+    background-color: var(--color-ivory-100);
+    background-image: var(--paper-grain);
     color: var(--color-ink);
     font-family: var(--font-sans);
     text-rendering: optimizeLegibility;
   }
+  /* Indic scripts: generous line height, no letter-spacing tricks, never clipped. */
   :lang(ta), :lang(hi), :lang(te), :lang(kn), :lang(ml) {
     line-height: 1.8;
+    letter-spacing: normal;
   }
-  h1, h2, h3 {
+  h1, h2, h3, .font-display {
     font-family: var(--font-display);
-    letter-spacing: -0.01em;
+    font-optical-sizing: auto;
+    text-wrap: balance;
   }
+  h1, h2 {
+    letter-spacing: -0.015em;
+  }
+  h1:lang(ta), h1:lang(hi), h1:lang(te), h1:lang(kn), h1:lang(ml),
+  h2:lang(ta), h2:lang(hi), h2:lang(te), h2:lang(kn), h2:lang(ml),
+  .script:lang(ta), .script:lang(hi), .script:lang(te), .script:lang(kn), .script:lang(ml) {
+    letter-spacing: normal;
+    line-height: 1.5;
+    padding-block: 0.08em;
+  }
+  p { text-wrap: pretty; }
+  ::selection { background: var(--color-gold-200); color: var(--color-ink-950); }
   :focus-visible {
-    outline: 3px solid var(--color-gold-400);
+    outline: 3px solid var(--color-vermilion-500);
     outline-offset: 2px;
     border-radius: 4px;
   }
@@ -63,89 +130,142 @@
 }
 
 @layer components {
+  .container-page {
+    width: 100%;
+    max-width: 76rem;
+    margin-inline: auto;
+    padding-inline: var(--gutter);
+  }
+  .section { padding-block: var(--space-section); }
+  .h-hero { font-size: var(--step-hero); line-height: 1.02; font-weight: 560; font-variation-settings: "opsz" 144; }
+  .h-section { font-size: var(--step-1); line-height: 1.08; font-weight: 520; }
+  .h-card { font-size: var(--step-3); line-height: 1.3; font-weight: 600; }
+  .lede { font-size: clamp(1.05rem, 0.98rem + 0.35vw, 1.25rem); line-height: 1.6; color: var(--color-muted); }
+
   .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    border-radius: 0.6rem;
-    padding: 0.8rem 1.25rem;
+    border-radius: var(--radius-md);
+    padding: 0.85rem 1.35rem;
     font-weight: 600;
     line-height: 1.2;
-    min-height: 44px;
-    transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+    min-height: 48px;
+    text-align: center;
+    transition: background-color var(--duration-control) var(--ease-soft), color var(--duration-control) var(--ease-soft),
+      border-color var(--duration-control) var(--ease-soft), transform var(--duration-control) var(--ease-soft), box-shadow var(--duration-control) var(--ease-soft);
   }
+  .btn:active:not([disabled]) { transform: translateY(1px); }
   .btn-primary {
-    background: var(--color-gold-400);
-    color: var(--color-night-950);
+    background: var(--color-vermilion-600);
+    color: #fff;
+    box-shadow: 0 1px 0 rgb(0 0 0 / 0.08), 0 6px 18px -8px rgb(154 46 25 / 0.55);
   }
-  .btn-primary:hover { background: var(--color-gold-300); }
+  .btn-primary:hover { background: var(--color-vermilion-700); }
   .btn-dark {
-    background: var(--color-night-800);
+    background: var(--color-ink-800);
     color: var(--color-ivory-50);
   }
-  .btn-dark:hover { background: var(--color-night-700); }
+  .btn-dark:hover { background: var(--color-ink-700); }
+  .btn-outline {
+    border: 1.5px solid var(--color-ink-800);
+    color: var(--color-ink-900);
+    background: color-mix(in srgb, var(--color-ivory-50) 55%, transparent);
+  }
+  .btn-outline:hover { background: var(--color-ivory-50); border-color: var(--color-ink-950); }
+  .btn-light {
+    background: var(--color-ivory-50);
+    color: var(--color-ink-950);
+  }
+  .btn-light:hover { background: var(--color-gold-100); }
   .btn-ghost {
     border: 1px solid currentColor;
     color: inherit;
   }
   .btn-ghost:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
-  .btn[disabled], .btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
+  .btn[disabled], .btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
 
-  .field-label { display: block; font-weight: 600; font-size: 0.95rem; margin-bottom: 0.35rem; }
-  .field-hint { font-size: 0.85rem; color: var(--color-muted); margin-top: 0.3rem; }
-  .field-error { font-size: 0.85rem; color: var(--color-danger); margin-top: 0.3rem; font-weight: 600; }
+  .field-label { display: block; font-weight: 600; font-size: 0.95rem; margin-bottom: 0.35rem; color: var(--color-ink-900); }
+  .field-hint { font-size: 0.86rem; color: var(--color-muted); margin-top: 0.35rem; line-height: 1.5; }
+  .field-error { font-size: 0.86rem; color: var(--color-danger); margin-top: 0.35rem; font-weight: 600; }
   .input {
     width: 100%;
     border: 1px solid var(--color-ivory-300);
     background: var(--color-ivory-50);
-    border-radius: 0.55rem;
-    padding: 0.7rem 0.8rem;
-    min-height: 44px;
+    border-radius: var(--radius-md);
+    padding: 0.7rem 0.85rem;
+    min-height: 48px;
     font-size: 1rem;
     color: var(--color-ink);
+    transition: border-color var(--duration-control) var(--ease-soft), box-shadow var(--duration-control) var(--ease-soft);
   }
-  .input:focus { border-color: var(--color-night-600); outline: 2px solid color-mix(in srgb, var(--color-night-600) 25%, transparent); outline-offset: 0; }
+  .input:focus { border-color: var(--color-ink-600); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-ink-600) 22%, transparent); }
   .input[aria-invalid="true"] { border-color: var(--color-danger); }
   .card {
     background: var(--color-ivory-50);
     border: 1px solid var(--color-ivory-300);
-    border-radius: 1rem;
+    border-radius: var(--radius-lg);
   }
   .eyebrow {
     text-transform: uppercase;
-    letter-spacing: 0.12em;
-    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    font-size: 0.74rem;
     font-weight: 600;
     color: var(--color-gold-700);
   }
-  .prose-legal h2 { font-size: 1.35rem; margin-top: 2rem; margin-bottom: 0.6rem; color: var(--color-night-800); }
+  .rule-gold {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--color-gold-400), transparent);
+  }
+  .prose-legal h2 { font-size: 1.35rem; margin-top: 2.2rem; margin-bottom: 0.6rem; color: var(--color-ink-800); }
+  .prose-legal h3 { font-size: 1.1rem; margin-top: 1.4rem; margin-bottom: 0.4rem; color: var(--color-ink-800); }
   .prose-legal p, .prose-legal li { margin-bottom: 0.7rem; line-height: 1.7; }
-  .prose-legal ul { list-style: disc; padding-left: 1.25rem; }
+  .prose-legal ul, .prose-legal ol { padding-left: 1.25rem; }
+  .prose-legal ul { list-style: disc; }
+  .prose-legal ol { list-style: decimal; }
+  .prose-legal a { color: var(--color-ink-700); text-decoration: underline; text-underline-offset: 3px; }
+  .prose-legal table { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin: 0.5rem 0 1rem; }
+  .prose-legal th, .prose-legal td { border-bottom: 1px solid var(--color-ivory-300); padding: 0.5rem 0.4rem; text-align: left; vertical-align: top; }
+}
+
+/*
+ * Scroll reveals. Content is ONLY hidden when JavaScript has started (html.js), so
+ * without JavaScript everything is simply visible. Reduced motion shows it at once.
+ */
+html.js [data-reveal] {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity var(--duration-content) var(--ease-soft), transform var(--duration-content) var(--ease-soft);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+html.js [data-reveal].is-visible {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.js [data-reveal] { opacity: 1; transform: none; transition: none; }
+}
+
+/* Ornamental linework: draws itself once when revealed. */
+html.js [data-reveal] .ornament-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 900ms var(--ease-soft) 120ms;
+}
+html.js [data-reveal].is-visible .ornament-line { stroke-dashoffset: 0; }
+@media (prefers-reduced-motion: reduce) {
+  html.js [data-reveal] .ornament-line { stroke-dashoffset: 0; transition: none; }
 }
 
 /* Web report: same markup as the PDF, coloured for screen. */
 .report-web {
-  --r-ink: #1b1930; --r-heading: #201c4f; --r-muted: #625e78; --r-muted-ink: #3b3854; --r-rule: #e7dcc5;
-  --r-gold: #c29a45; --r-gold-ink: #7d5a14; --r-note-bg: #f6f0e3; --r-chip-bg: #ece7f7; --r-chip-ink: #2d2869;
+  --r-ink: #131b3b; --r-heading: #1c2552; --r-muted: #5c6079; --r-muted-ink: #3b3f58; --r-rule: #e4d4b3;
+  --r-gold: #b8893a; --r-gold-ink: #7a561a; --r-note-bg: #f6eedd; --r-chip-bg: #ebe9f6; --r-chip-ink: #28336c;
   --r-banner-bg: #fff4d6; --r-banner-ink: #6b4a00; --r-banner-line: #e6c66e;
-  --chart-bg: #fffdf8; --chart-center: #f5f0e4; --chart-line: #b9a57a; --chart-ink: #201c4f; --chart-muted: #7a7466;
+  --chart-bg: #fffdf8; --chart-center: #f5eee0; --chart-line: #b9a57a; --chart-ink: #1c2552; --chart-muted: #7a7466;
+  --pair-a: #28336c; --pair-a-soft: #dfe1f2; --pair-b: #b8893a; --pair-b-soft: #f6e8c8; --pair-b-ink: #7a561a; --pair-both: #e9dcc0;
+  --pair-soft: #1d6a66; --pair-hard: #b5371d;
   --r-font: var(--font-sans);
   --r-heading-font: var(--font-display);
-}
-
-/* Placeholder hero twinkle: two layers of tiny stars fading in and out slowly. */
-.hero-twinkle {
-  background-image:
-    radial-gradient(1.5px 1.5px at 12% 22%, rgba(246, 241, 230, 0.9) 50%, transparent 51%),
-    radial-gradient(1px 1px at 28% 68%, rgba(246, 241, 230, 0.8) 50%, transparent 51%),
-    radial-gradient(1.5px 1.5px at 47% 14%, rgba(227, 194, 122, 0.9) 50%, transparent 51%),
-    radial-gradient(1px 1px at 63% 81%, rgba(246, 241, 230, 0.7) 50%, transparent 51%),
-    radial-gradient(1.5px 1.5px at 84% 33%, rgba(246, 241, 230, 0.9) 50%, transparent 51%),
-    radial-gradient(1px 1px at 91% 72%, rgba(227, 194, 122, 0.8) 50%, transparent 51%);
-  animation: hero-twinkle 7s ease-in-out infinite alternate;
-}
-@keyframes hero-twinkle {
-  from { opacity: 0.25; }
-  to { opacity: 1; }
 }

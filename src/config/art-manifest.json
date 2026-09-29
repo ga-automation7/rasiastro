@@ -1,0 +1,23 @@
+{
+  "heroDesktop": {
+    "src": "/art/hero-elephant.webp",
+    "width": 1672,
+    "height": 941,
+    "blurDataURL": "data:image/webp;base64,UklGRlYAAABXRUJQVlA4IEoAAADwAQCdASoQAAkAA4BaJZgCdADG7v8rWUAA/vHgqBRoSVLUcngCZGPcPM+kuzk/OR9QivGRF2POINhPrKYfhZ4LOVse9lFq56YAAA==",
+    "bytes": 369902
+  },
+  "heroMobile": {
+    "src": "/art/hero-elephant-mobile.webp",
+    "width": 1072,
+    "height": 901,
+    "blurDataURL": "data:image/webp;base64,UklGRngAAABXRUJQVlA4IGwAAACQAgCdASoQAA0AA4BaJbACdAYubzFAXGUNfIkCAAD+2B0nSv8/I6s7wEA/08qzcppASl5HGZqtd7lH2AfVu1zqUGYvq5y8Hh3T1dX/BJ+bhEF8rciNf9wbGoaHm8+CdKpyJ3f5ov6bVBTZ1AA=",
+    "bytes": 276372
+  },
+  "compatibility": {
+    "src": "/art/compatibility-sun-moon.webp",
+    "width": 1672,
+    "height": 941,
+    "blurDataURL": "data:image/webp;base64,UklGRkIAAABXRUJQVlA4IDYAAAAQAgCdASoQAAkAA4BaJYwCdAEPCNz1Z2AAAP7zQ19orkumJ1UiHshetHzt05/uN4JckYo0FAA=",
+    "bytes": 201366
+  }
+}

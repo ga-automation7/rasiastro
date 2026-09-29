@@ -54,6 +54,17 @@ const nextConfig: NextConfig = {
     "/api/demo/**": ["./src/assets/fonts/**"],
     "/api/orders/**": ["./src/assets/fonts/**"],
   },
+  images: {
+    formats: ["image/avif", "image/webp"],
+    // Next.js 16 only serves qualities listed here: 82 for the hero artwork, 75 elsewhere.
+    qualities: [75, 82],
+    // Homepage artwork masters are at most 1672 px wide; no need for larger variants.
+    deviceSizes: [640, 750, 828, 1080, 1280, 1672],
+  },
+  async redirects() {
+    // The public sample report was retired; keep old links working.
+    return [{ source: "/sample-report", destination: "/", permanent: false }];
+  },
   async headers() {
     return [
       { source: "/:path*", headers: baseSecurityHeaders },

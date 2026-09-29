@@ -6,6 +6,8 @@ import { PRICING } from "@/config/pricing";
 import { OrderInputSchema, flattenIssues } from "@/domain/order-input";
 import { formatInr } from "@/domain/pricing";
 import type { LanguageCode, TraditionCode } from "@/config/languages";
+import { openPayment, postJson, recordFormStarted } from "./checkout";
+import { birthErrors } from "./person";
 import { StepBirth } from "./StepBirth.client";
 import { StepChoose } from "./StepChoose.client";
 import { StepContext } from "./StepContext.client";
@@ -13,22 +15,11 @@ import { StepReview, type PreviewResult } from "./StepReview.client";
 import { EMPTY_STATE, from24, stepForField, toOrderInput, type PlaceOption, type StepId, type WizardState } from "./wizard-state";
 
 const STEPS: { id: StepId; title: string }[] = [
-  { id: 1, title: "Tradition & language" },
-  { id: 2, title: "Birth details" },
-  { id: 3, title: "Context & questions" },
-  { id: 4, title: "Review & pay" },
+  { id: 1, title: "Choose your report" },
+  { id: 2, title: "Your birth details" },
+  { id: 3, title: "Notes and questions" },
+  { id: 4, title: "Review your details" },
 ];
-
-interface ApiError {
-  error?: { code: string; message: string; fields: Record<string, string> | null };
-}
-
-async function postJson<T>(url: string, body?: unknown): Promise<{ ok: true; data: T } | { ok: false; status: number; error: NonNullable<ApiError["error"]> }> {
-  const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
-  const data = (await res.json().catch(() => ({}))) as T & ApiError;
-  if (res.ok) return { ok: true, data };
-  return { ok: false, status: res.status, error: data.error ?? { code: "unknown", message: "Something went wrong. Please try again.", fields: null } };
-}
 
 /** Minimal per-step checks for quick feedback; the server re-validates everything. */
 function stepErrors(step: StepId, s: WizardState): Record<string, string> {
@@ -37,17 +28,10 @@ function stepErrors(step: StepId, s: WizardState): Record<string, string> {
     if (!s.tradition) e.tradition = "Please choose a tradition.";
     if (!s.language) e.language = "Please choose a report language.";
   }
-  if (step === 2) {
-    if (s.subjectName.trim().length < 2) e["birth.subjectName"] = "Please enter the full name.";
-    if (!s.day || !s.month || !s.year) e["birth.birthDate"] = "Please choose the day, month and year of birth.";
-    if (!s.timeCertainty) e["birth.timeCertainty"] = "Please tell us how sure you are of the birth time.";
-    if (s.timeCertainty && s.timeCertainty !== "unknown" && (!s.hour12 || !s.minute || !s.meridiem)) e["birth.birthTime"] = "Please choose the hour, minute and AM/PM.";
-    if (s.timeCertainty === "approximate" && !s.timeWindowMinutes) e["birth.timeWindowMinutes"] = "Please choose how approximate the time is.";
-    if (!s.place) e["birth.placeId"] = "Please search for and choose the birthplace.";
-  }
+  if (step === 2) Object.assign(e, birthErrors(s, "birth"));
   if (step === 3 && s.includeQuestions) {
     s.questions.forEach((q, i) => {
-      if (q.trim().length < 10) e[`questions.${i}`] = "Please write at least 10 characters, or remove the add-on.";
+      if (q.trim().length < 10) e[`questions.${i}`] = "Please write at least 10 characters, or remove the questions.";
     });
   }
   return e;
@@ -55,17 +39,17 @@ function stepErrors(step: StepId, s: WizardState): Record<string, string> {
 
 export function OrderWizard({
   checkoutAvailable,
-  pausedMessage,
   initialTradition,
+  initialQuestions,
   fromOrderId,
 }: {
   checkoutAvailable: boolean;
-  pausedMessage: string | null;
   initialTradition: TraditionCode | null;
+  initialQuestions: boolean;
   fromOrderId: string | null;
 }) {
   const router = useRouter();
-  const [state, setState] = useState<WizardState>({ ...EMPTY_STATE, tradition: initialTradition });
+  const [state, setState] = useState<WizardState>({ ...EMPTY_STATE, tradition: initialTradition, includeQuestions: initialQuestions });
   const [step, setStep] = useState<StepId>(1);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [banner, setBanner] = useState<string | null>(null);
@@ -80,8 +64,7 @@ export function OrderWizard({
     dirty.current = true;
     if (!startedEvent.current) {
       startedEvent.current = true;
-      // Funnel counter only: no form data is sent.
-      void fetch("/api/events", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: "form_started" }) }).catch(() => undefined);
+      recordFormStarted();
     }
     setState((s) => ({ ...s, ...patch }));
   }, []);
@@ -102,6 +85,7 @@ export function OrderWizard({
       const res = await fetch(`/api/orders/${encodeURIComponent(fromOrderId)}/prefill`);
       if (!res.ok) return;
       const p = (await res.json()) as {
+        product: "personal" | "compatibility";
         tradition: TraditionCode;
         language: LanguageCode;
         birth: { subjectName: string; birthDate: string; timeCertainty: WizardState["timeCertainty"]; birthTime: string | null; timeWindowMinutes: number | null; place: PlaceOption };
@@ -112,6 +96,7 @@ export function OrderWizard({
         email: string;
         phone: string | null;
       };
+      if (p.product !== "personal") return;
       const [y, m, d] = p.birth.birthDate.split("-");
       setState({
         ...EMPTY_STATE,
@@ -153,7 +138,7 @@ export function OrderWizard({
 
   const runPreview = useCallback(async (s: WizardState) => {
     setPreviewLoading(true);
-    const res = await postJson<PreviewResult>("/api/orders/preview", { ...toOrderInput(s), email: s.email || "preview@example.com", phone: s.phone || "9999999999", consentProcessing: true });
+    const res = await postJson<PreviewResult>("/api/orders/preview", { ...toOrderInput(s), email: s.email || "preview@example.com", phone: s.phone || "9999999999", consentProcessing: true, adultConfirmed: true });
     setPreviewLoading(false);
     if (res.ok) {
       setPreview(res.data);
@@ -213,36 +198,19 @@ export function OrderWizard({
       return;
     }
     dirty.current = false;
-    const orderId = created.data.orderId;
-    const checkout = await postJson<{ provider: "cashfree" | "demo"; paymentSessionId: string | null; redirectUrl: string | null; environment: string }>(`/api/orders/${orderId}/checkout`);
-    if (!checkout.ok) {
-      // The order exists; send the customer to its page where they can retry payment.
-      router.push(`/orders/${orderId}?payment=start_failed`);
-      return;
-    }
-    if (checkout.data.provider === "cashfree" && checkout.data.paymentSessionId) {
-      const { load } = await import("@cashfreepayments/cashfree-js");
-      const cashfree = await load({ mode: checkout.data.environment === "production" ? "production" : "sandbox" });
-      if (!cashfree) {
-        router.push(`/orders/${orderId}?payment=start_failed`);
-        return;
-      }
-      await cashfree.checkout({ paymentSessionId: checkout.data.paymentSessionId, redirectTarget: "_self" });
-      return;
-    }
-    router.push(checkout.data.redirectUrl ?? `/orders/${orderId}`);
+    await openPayment(created.data.orderId, (href) => router.push(href));
   };
 
   const total = state.includeQuestions ? PRICING.report.amountPaise + PRICING.questionsAddon.amountPaise : PRICING.report.amountPaise;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
       <nav aria-label="Order steps" className="mb-8">
         <ol className="grid grid-cols-4 gap-2">
           {STEPS.map((s) => (
             <li key={s.id}>
-              <div className={`h-1.5 rounded-full ${s.id <= step ? "bg-night-700" : "bg-ivory-300"}`} />
-              <p className={`mt-2 hidden text-xs font-semibold sm:block ${s.id === step ? "text-night-900" : "text-muted"}`} aria-current={s.id === step ? "step" : undefined}>
+              <div className={`h-1.5 rounded-full transition-colors duration-300 ${s.id <= step ? "bg-vermilion-600" : "bg-ivory-300"}`} />
+              <p className={`mt-2 hidden text-xs font-semibold sm:block ${s.id === step ? "text-ink-900" : "text-muted"}`} aria-current={s.id === step ? "step" : undefined}>
                 {s.id}. {s.title}
               </p>
             </li>
@@ -253,15 +221,10 @@ export function OrderWizard({
         </p>
       </nav>
 
-      <h1 ref={headingRef} tabIndex={-1} className="text-3xl font-semibold text-night-900 outline-none sm:text-4xl">
+      <p className="eyebrow">Personal report · {formatInr(PRICING.report.amountPaise)}</p>
+      <h1 ref={headingRef} tabIndex={-1} className="h-section mt-2 text-ink-950 outline-none">
         {STEPS[step - 1]!.title}
       </h1>
-
-      {!checkoutAvailable ? (
-        <p role="status" className="mt-4 rounded-xl border border-gold-400 bg-gold-200/40 p-4 text-sm">
-          {pausedMessage}
-        </p>
-      ) : null}
       {banner ? (
         <p role="alert" className="mt-4 rounded-xl border border-night-600/30 bg-white p-4 text-sm">
           {banner}
@@ -296,7 +259,7 @@ export function OrderWizard({
 
         <div className="mt-10 flex flex-col-reverse gap-3 border-t border-ivory-300 pt-6 sm:flex-row sm:items-center sm:justify-between">
           {step > 1 ? (
-            <button type="button" className="btn btn-ghost text-night-800" onClick={() => goTo((step - 1) as StepId)} disabled={submitting}>
+            <button type="button" className="btn btn-ghost text-ink-800" onClick={() => goTo((step - 1) as StepId)} disabled={submitting}>
               Back
             </button>
           ) : (
@@ -308,11 +271,11 @@ export function OrderWizard({
             </button>
           ) : (
             <button type="submit" className="btn btn-primary text-base" disabled={submitting || !checkoutAvailable || previewLoading || !preview} aria-disabled={submitting || !checkoutAvailable}>
-              {submitting ? "Opening secure payment…" : `Pay ${preview?.totalLabel ?? formatInr(total)} securely`}
+              {submitting ? "Opening secure payment…" : `Continue to payment · ${preview?.totalLabel ?? formatInr(total)}`}
             </button>
           )}
         </div>
-        {step === 4 ? <p className="mt-3 text-right text-xs text-muted">Payments are processed by Cashfree Payments. We never see your card or UPI details.</p> : null}
+        {step === 4 ? <p className="mt-3 text-right text-xs text-muted">Payments are handled by Cashfree Payments. We never see your card or UPI details.</p> : null}
       </form>
     </div>
   );

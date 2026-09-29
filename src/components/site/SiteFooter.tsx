@@ -1,19 +1,36 @@
 import Link from "next/link";
-import { NAV_LINKS, POLICY_LINKS, SITE } from "@/config/site";
+import { NAV_LINKS, POLICY_LINKS } from "@/config/site";
+import { COPY } from "@/content/site-copy";
 import { Logo } from "./Logo";
 
-export function SiteFooter({ supportEmail }: { supportEmail: string }) {
+export interface BusinessDetails {
+  legalName: string | null;
+  address: string | null;
+  registration: string | null;
+  gstin: string | null;
+  supportEmail: string;
+  supportPhone: string | null;
+}
+
+export function SiteFooter({ business }: { business: BusinessDetails }) {
   return (
-    <footer className="mt-20 bg-night-950 text-ivory-200">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr]">
+    <footer className="bg-ink-950 text-ivory-200">
+      <div className="container-page grid gap-10 py-14 md:grid-cols-[1.5fr_1fr_1fr]">
         <div>
           <Logo tone="light" />
-          <p className="mt-3 max-w-sm text-sm text-ivory-300">{SITE.tagline} Personalised astrology reports in six languages, calculated from your birth details.</p>
-          <p className="mt-4 text-sm">
+          <p className="mt-4 max-w-sm font-display text-lg leading-snug text-ivory-100">
+            {COPY.campaign.map((line) => (
+              <span key={line} className="block">
+                {line}
+              </span>
+            ))}
+          </p>
+          <p className="mt-5 text-sm">
             Support:{" "}
-            <a className="underline decoration-gold-400 underline-offset-4 hover:text-ivory-50" href={`mailto:${supportEmail}`}>
-              {supportEmail}
+            <a className="underline decoration-gold-400 underline-offset-4 hover:text-ivory-50" href={`mailto:${business.supportEmail}`}>
+              {business.supportEmail}
             </a>
+            {business.supportPhone ? <span className="block">Phone: {business.supportPhone}</span> : null}
           </p>
         </div>
         <nav aria-label="Site">
@@ -46,9 +63,17 @@ export function SiteFooter({ supportEmail }: { supportEmail: string }) {
           </ul>
         </nav>
       </div>
-      <div className="border-t border-night-800">
-        <div className="mx-auto max-w-6xl space-y-2 px-4 py-6 text-xs text-ivory-300 sm:px-6">
-          <p>Astrology is an interpretive tradition, not scientifically validated prediction. Reports are for reflection and are not medical, legal, financial or psychological advice.</p>
+      <div className="border-t border-ink-800">
+        <div className="container-page space-y-2 py-6 text-xs leading-relaxed text-ivory-300">
+          <p className="text-ivory-200">{COPY.disclaimer}</p>
+          {business.legalName ? (
+            <p>
+              Operated by {business.legalName}
+              {business.registration ? ` (${business.registration})` : ""}
+              {business.address ? `, ${business.address}` : ""}
+              {business.gstin ? ` · GSTIN ${business.gstin}` : ""}.
+            </p>
+          ) : null}
           <p>
             Birthplace data from{" "}
             <a className="underline" href="https://www.geonames.org/" rel="noopener noreferrer">
