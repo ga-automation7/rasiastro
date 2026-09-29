@@ -1,5 +1,5 @@
 import type { Fact, Placement, VedicChart } from "@/domain/astrology/chart-types";
-import { SIGN_KEYS, type SignKey } from "@/domain/astrology/constants";
+import { SIGN_KEYS, SIGN_NAMES_EN, type SignKey } from "@/domain/astrology/constants";
 import type { ReportDictionary } from "@/i18n";
 import { html, join, raw, type RawHtml } from "./html";
 
@@ -45,6 +45,11 @@ function entryText(entries: CellEntry[], x: number, y: number, lineHeight: numbe
   );
 }
 
+/** Indian charts use rasi names; in English that means Mesha, Vrishabha... rather than Aries, Taurus. */
+function rasiName(dict: ReportDictionary, sign: SignKey): string {
+  return dict.code === "en" ? SIGN_NAMES_EN[sign].sanskrit : dict.signs[sign];
+}
+
 /** South Indian chart: signs fixed in a 4x4 frame, Pisces at top-left. */
 export function southIndianChartSvg(chart: VedicChart, dict: ReportDictionary, title: string): RawHtml {
   const cell = 90;
@@ -61,14 +66,14 @@ export function southIndianChartSvg(chart: VedicChart, dict: ReportDictionary, t
     const y = cy * cell;
     return html`<g>
       <rect x="${x}" y="${y}" width="${cell}" height="${cell}" class="chart-cell"/>
-      <text x="${x + 5}" y="${y + 14}" class="chart-sign">${dict.signs[sign]}</text>
+      <text x="${x + 5}" y="${y + 14}" class="chart-sign">${rasiName(dict, sign)}</text>
       ${entryText(entries.get(sign)!, x + cell / 2, y + 34, 15, "middle")}
     </g>`;
   });
   return html`<svg viewBox="-1 -1 362 362" role="img" aria-label="${title}" class="chart-svg" xmlns="http://www.w3.org/2000/svg">
     ${join(cells)}
     <rect x="${cell}" y="${cell}" width="${cell * 2}" height="${cell * 2}" class="chart-center"/>
-    <text x="180" y="176" text-anchor="middle" class="chart-title">${dict.labels.sign}</text>
+    <text x="180" y="176" text-anchor="middle" class="chart-title">${dict.code === "en" ? "Rasi" : dict.labels.sign}</text>
     <text x="180" y="198" text-anchor="middle" class="chart-subtitle">Rasi Astro</text>
   </svg>`;
 }

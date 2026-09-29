@@ -41,6 +41,8 @@ const privateHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // The floating dev-tools badge overlaps form controls during mobile testing.
+  devIndicators: false,
   reactStrictMode: true,
   // These packages load native binaries, WASM or large data files at runtime and
   // must not be bundled by Next.js.

@@ -65,10 +65,10 @@ function vedicPeriods(chart: Extract<ChartData, { kind: "vedic" }>, today: strin
     periods.push({ id: `sadesati:${p.start}`, when: classify(p.start, p.end, today), kind: "sade_sati", start: p.start, end: p.end, transit: p });
   }
   const horizon = addYears(today, 2);
-  for (const p of chart.transits.saturnFromMoon.filter((x) => x.end > today && x.start <= horizon).slice(0, 3)) {
+  for (const p of mainSegments(chart.transits.saturnFromMoon).filter((x) => x.end > today && x.start <= horizon).slice(0, 3)) {
     periods.push({ id: `saturn_moon:${p.detail}:${p.start}`, when: classify(p.start, p.end, today), kind: "saturn_from_moon", start: p.start, end: p.end, transit: p, house: houseOf(p) });
   }
-  for (const p of chart.transits.jupiterFromMoon.filter((x) => x.end > today && x.start <= horizon).slice(0, 4)) {
+  for (const p of mainSegments(chart.transits.jupiterFromMoon).filter((x) => x.end > today && x.start <= horizon).slice(0, 3)) {
     periods.push({ id: `jupiter_moon:${p.detail}:${p.start}`, when: classify(p.start, p.end, today), kind: "jupiter_from_moon", start: p.start, end: p.end, transit: p, house: houseOf(p) });
   }
   return dedupe(periods).sort((a, b) => a.start.localeCompare(b.start));
@@ -87,6 +87,22 @@ function westernPeriods(chart: Extract<ChartData, { kind: "western" }>, today: s
       transit: t,
     }));
   return dedupe(periods).slice(0, 12);
+}
+
+/**
+ * Retrograde motion makes slow planets step back and forth across a sign boundary.
+ * For a readable report we keep the main stays (120+ days) and merge consecutive
+ * stays in the same house, so a transit reads as one period rather than several.
+ */
+export function mainSegments(periods: TransitPeriod[], minDays = 120): TransitPeriod[] {
+  const days = (p: TransitPeriod) => (Date.parse(p.end) - Date.parse(p.start)) / 86_400_000;
+  const merged: TransitPeriod[] = [];
+  for (const p of periods.filter((x) => days(x) >= minDays)) {
+    const last = merged[merged.length - 1];
+    if (last && last.detail === p.detail) last.end = p.end;
+    else merged.push({ ...p });
+  }
+  return merged;
 }
 
 function houseOf(p: TransitPeriod): number | undefined {

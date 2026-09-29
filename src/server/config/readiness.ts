@@ -46,6 +46,12 @@ export function getConfigChecks(env: Env = getEnv()): ConfigCheck[] {
     add("database", "Database (Supabase Postgres)", Boolean(env.DATABASE_URL), env.DATABASE_URL ? "DATABASE_URL set." : "Set DATABASE_URL.");
     add("app_secret", "APP_SECRET", Boolean(env.APP_SECRET && env.APP_SECRET.length >= 32), "At least 32 random characters.");
     add("site_url", "Public site URL uses https", env.PUBLIC_SITE_URL.startsWith("https://"), `PUBLIC_SITE_URL=${env.PUBLIC_SITE_URL}`);
+    add(
+      "business_details",
+      "Business details for policy pages",
+      Boolean(env.BUSINESS_LEGAL_NAME && env.BUSINESS_ADDRESS && env.GRIEVANCE_OFFICER_NAME),
+      "Set BUSINESS_LEGAL_NAME, BUSINESS_ADDRESS and GRIEVANCE_OFFICER_NAME (shown on the privacy, terms and contact pages).",
+    );
   }
 
   if (providers.payments === "cashfree") {

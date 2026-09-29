@@ -109,7 +109,15 @@ async function openBrowser(): Promise<{ browser: Browser; source: PdfBrowserSour
   return { browser, source, close: () => browser.close() };
 }
 
+type PdfRenderer = (doc: ReportDocument) => Promise<{ pdf: Uint8Array; renderer: string }>;
+let rendererOverride: PdfRenderer | null = null;
+/** Tests that are not about the PDF itself can skip launching a browser. */
+export function setPdfRendererForTests(renderer: PdfRenderer | null): void {
+  rendererOverride = renderer;
+}
+
 export async function renderPdf(doc: ReportDocument): Promise<{ pdf: Uint8Array; renderer: string }> {
+  if (rendererOverride) return rendererOverride(doc);
   const content = buildPdfHtml(doc);
   const { browser, source, close } = await openBrowser();
   try {

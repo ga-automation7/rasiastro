@@ -4,9 +4,9 @@ import type { PackageCode, PriceQuote } from "@/domain/pricing";
 import { jsonParam, type SqlExecutor } from "../db";
 import type { ResolvedBirth } from "./resolve-birth";
 
-export type PaymentStatus = "awaiting_payment" | "pending" | "paid" | "failed" | "cancelled" | "expired" | "needs_review";
-export type GenerationStatus = "not_started" | "queued" | "calculating" | "interpreting" | "rendering" | "ready" | "failed";
-export type DeliveryStatus = "not_sent" | "sending" | "sent" | "failed";
+import type { DeliveryStatus, GenerationStatus, PaymentStatus } from "@/domain/order-status";
+
+export type { DeliveryStatus, GenerationStatus, PaymentStatus };
 
 export interface Order {
   id: string;

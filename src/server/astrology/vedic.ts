@@ -210,8 +210,9 @@ export function buildVedicChart(input: ChartInput): VedicChart {
         ? { sadeSati: [], jupiterFromMoon: [], saturnFromMoon: [] }
         : {
             sadeSati: sadeSatiPeriods(moonSignKnown, birthMs, reference + 10 * yearMs),
-            jupiterFromMoon: fromMoonSignPeriods("jupiter", moonSignKnown, reference - 0.5 * yearMs, reference + 2 * yearMs),
-            saturnFromMoon: fromMoonSignPeriods("saturn", moonSignKnown, reference - 1 * yearMs, reference + 3 * yearMs),
+            // Scan from well before today so the current stay shows its true start date.
+            jupiterFromMoon: fromMoonSignPeriods("jupiter", moonSignKnown, reference - 1.5 * yearMs, reference + 2 * yearMs),
+            saturnFromMoon: fromMoonSignPeriods("saturn", moonSignKnown, reference - 3 * yearMs, reference + 3 * yearMs),
           },
   };
 }

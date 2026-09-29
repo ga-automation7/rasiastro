@@ -57,7 +57,7 @@ export function sadeSatiPeriods(moonSignIndex: number, fromMs: number, toMs: num
     const house = (siderealSign("saturn", ms) - moonSignIndex + 12) % 12;
     return house === 11 || house === 0 || house === 1 ? true : null;
   };
-  const raw = groupByKey(fromMs, toMs, 5, inPhase).map((g) => g.interval);
+  const raw = groupByKey(fromMs, toMs, 2, inPhase).map((g) => g.interval);
   return mergeClose(raw, 400).map((i) => ({
     body: "saturn",
     target: "moon_sign",
@@ -70,7 +70,7 @@ export function sadeSatiPeriods(moonSignIndex: number, fromMs: number, toMs: num
 
 /** Periods by house counted from the natal Moon sign (Gochara). */
 export function fromMoonSignPeriods(body: "saturn" | "jupiter", moonSignIndex: number, fromMs: number, toMs: number): TransitPeriod[] {
-  return groupByKey(fromMs, toMs, 3, (ms) => ((siderealSign(body, ms) - moonSignIndex + 12) % 12) + 1).map((g) => ({
+  return groupByKey(fromMs, toMs, 2, (ms) => ((siderealSign(body, ms) - moonSignIndex + 12) % 12) + 1).map((g) => ({
     body,
     target: "moon_sign",
     aspect: "sign",
