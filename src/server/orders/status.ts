@@ -1,3 +1,4 @@
+import { getCategory } from "@/config/compatibility";
 import { getLanguage, TRADITIONS } from "@/config/languages";
 import { formatInr } from "@/domain/pricing";
 import { getEnv } from "../config/env";
@@ -37,19 +38,18 @@ export async function getOrderStatusView(orderId: string): Promise<OrderStatusVi
       label: "Payment confirmed",
       state: paid ? "done" : ["failed", "cancelled", "expired", "needs_review"].includes(order.paymentStatus) ? "failed" : "active",
     },
-    { key: "chart", label: "Calculating your chart", state: genState(1) },
+    { key: "chart", label: order.product === "compatibility" ? "Preparing both charts" : "Preparing your chart", state: genState(1) },
     { key: "interpretation", label: "Writing your interpretation", state: genState(2) },
     { key: "pdf", label: "Preparing your PDF", state: genState(3) },
-    {
-      key: "email",
-      label: "Emailing your secure link",
-      state: order.deliveryStatus === "sent" ? "done" : order.deliveryStatus === "failed" ? "failed" : g === "ready" ? "active" : "pending",
-    },
+    // Shown as done only when the stored report is actually marked ready.
+    { key: "ready", label: "Your report is ready", state: g === "ready" ? "done" : "pending" },
   ];
   return {
     orderId: order.id,
     reference: order.reference,
     mode: order.mode,
+    product: order.product,
+    categoryLabel: order.compatibilityCategory ? getCategory(order.compatibilityCategory).label : null,
     traditionTitle: TRADITIONS.find((t) => t.code === order.tradition)?.title ?? order.tradition,
     languageName: getLanguage(order.language).englishName,
     totalLabel: formatInr(order.totalAmountPaise),

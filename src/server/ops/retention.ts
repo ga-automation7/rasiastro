@@ -8,7 +8,8 @@ import { getStorage } from "../storage";
  * - Unpaid, abandoned orders are deleted completely once `delete_after` passes
  *   (RETENTION_UNPAID_DAYS). No money moved, so there is no financial record to keep.
  * - Paid orders have their personal data erased after RETENTION_REPORT_DAYS: birth
- *   details, notes, questions, chart, report text, PDF, access links, email/phone.
+ *   details of every participant, notes, shared context, questions, charts, the pair
+ *   analysis, report text, PDF, access links, email/phone.
  *   The order reference, package, amounts, dates and payment references remain as
  *   the business/tax record. Confirm the retention period with your accountant.
  * - Orders flagged "needs_review" are never auto-deleted.
@@ -23,7 +24,8 @@ export async function erasePersonalData(db: Database, orderId: string): Promise<
   const files = await db.query<{ key: string }>(`select pdf_storage_key as key from reports where order_id = $1::uuid and pdf_storage_key is not null`, [orderId]);
   if (files.length) await getStorage().remove(files.map((f) => f.key));
   await db.transaction(async (tx) => {
-    for (const table of ["birth_details", "order_context", "order_questions", "charts", "report_parts", "reports", "access_tokens", "deliveries", "outbox"]) {
+    const tables = ["birth_details", "order_context", "order_questions", "compatibility_context", "compatibility_analyses", "charts", "report_parts", "reports", "access_tokens", "deliveries", "outbox"];
+    for (const table of tables) {
       await tx.query(`delete from ${table} where order_id = $1::uuid`, [orderId]);
     }
     await tx.query(`update payment_events set payload = '{}'::jsonb where provider_order_id in (select provider_order_id from payments where order_id = $1::uuid)`, [orderId]);

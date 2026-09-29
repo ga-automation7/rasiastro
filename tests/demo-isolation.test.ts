@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { chooseProviders, getCheckoutAvailability } from "@/server/config/readiness";
+import { chooseProviders, getCheckoutAvailability, getSiteState } from "@/server/config/readiness";
 import { getEnv } from "@/server/config/env";
 import { getInterpretationProvider } from "@/server/interpretation/service";
 import { getPaymentProvider } from "@/server/payments/service";
@@ -25,7 +25,11 @@ const LIVE_OK = {
   BUSINESS_LEGAL_NAME: "Example Pvt Ltd",
   BUSINESS_ADDRESS: "Chennai",
   GRIEVANCE_OFFICER_NAME: "A. Person",
+  SUPPORT_PHONE: "+91 90000 00000",
+  CASHFREE_ENV: "production",
 };
+
+const SANDBOX_OK = { ...LIVE_OK, APP_MODE: "sandbox", CASHFREE_ENV: "sandbox", PUBLIC_SITE_URL: "https://rasi-astro.vercel.app" };
 
 describe("demo mode can never take real money", () => {
   afterEach(() => setTestEnv());
@@ -38,8 +42,11 @@ describe("demo mode can never take real money", () => {
   });
 
   it("demo mode is refused on the production deployment", () => {
-    setTestEnv({ VERCEL_ENV: "production" });
+    setTestEnv({ VERCEL_ENV: "production", VERCEL_PROJECT_PRODUCTION_URL: "rasiastro.com" });
     expect(getCheckoutAvailability().available).toBe(false);
+    // A *.vercel.app production deployment is a staging site, not the shop.
+    setTestEnv({ VERCEL_ENV: "production", VERCEL_PROJECT_PRODUCTION_URL: "rasi-astro.vercel.app" });
+    expect(getCheckoutAvailability().available).toBe(true);
     setTestEnv({ PUBLIC_SITE_URL: "https://rasiastro.com" });
     expect(getCheckoutAvailability().available).toBe(false);
   });
@@ -69,11 +76,58 @@ describe("demo mode can never take real money", () => {
     expect(getCheckoutAvailability().available).toBe(false);
   });
 
-  it("the production site must use the Cashfree production environment", () => {
-    setTestEnv({ ...LIVE_OK, VERCEL_ENV: "production", CASHFREE_ENV: "sandbox" });
+  it("live mode must use the Cashfree production environment; sandbox must use the test environment", () => {
+    setTestEnv({ ...LIVE_OK, CASHFREE_ENV: "sandbox" });
     expect(getCheckoutAvailability().available).toBe(false);
-    setTestEnv({ ...LIVE_OK, VERCEL_ENV: "production", CASHFREE_ENV: "production" });
+    setTestEnv({ ...LIVE_OK, CASHFREE_ENV: "production" });
     expect(getCheckoutAvailability().available).toBe(true);
     expect(getEnv().CASHFREE_ENV).toBe("production");
+    setTestEnv(SANDBOX_OK);
+    expect(getCheckoutAvailability().available).toBe(true);
+    setTestEnv({ ...SANDBOX_OK, CASHFREE_ENV: "production" });
+    expect(getCheckoutAvailability().available).toBe(false);
+  });
+
+  it("sandbox uses every real adapter but is refused on rasiastro.com", () => {
+    setTestEnv(SANDBOX_OK);
+    expect(chooseProviders()).toMatchObject({ payments: "cashfree", interpretation: "openai", email: "resend" });
+    expect(getSiteState()).toMatchObject({ kind: "sandbox", banner: { tone: "sandbox" } });
+    setTestEnv({ ...SANDBOX_OK, PUBLIC_SITE_URL: "https://rasiastro.com" });
+    expect(getSiteState().kind).toBe("closed");
+  });
+
+  it("the banner and the order buttons never contradict each other", () => {
+    for (const env of [{}, { VERCEL_ENV: "production", VERCEL_PROJECT_PRODUCTION_URL: "rasiastro.com" }, LIVE_OK, { ...LIVE_OK, DATABASE_URL: undefined }, SANDBOX_OK]) {
+      setTestEnv(env);
+      const state = getSiteState();
+      if (state.kind === "demo") expect(state.products.personal.available).toBe(true);
+      if (state.kind === "closed") {
+        expect(state.products.personal.available).toBe(false);
+        expect(state.products.compatibility.available).toBe(false);
+        expect(state.banner?.text).not.toMatch(/simulated/i);
+      }
+    }
+  });
+
+  it("a hosted deployment without an explicit APP_MODE takes no orders", () => {
+    const previous = process.env.VERCEL;
+    process.env.VERCEL = "1";
+    try {
+      setTestEnv({ DATABASE_URL: "postgres://u:p@localhost:5432/db", STORAGE_PROVIDER: "supabase", SUPABASE_URL: "https://x.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "k", APP_SECRET: "x".repeat(40) });
+      delete process.env.APP_MODE;
+      expect(getSiteState().kind).toBe("closed");
+    } finally {
+      if (previous === undefined) delete process.env.VERCEL;
+      else process.env.VERCEL = previous;
+    }
+  });
+
+  it("each product has its own switch", () => {
+    setTestEnv({ ...LIVE_OK, COMPATIBILITY_ORDERS_ENABLED: "false" });
+    expect(getCheckoutAvailability(undefined, "personal").available).toBe(true);
+    expect(getCheckoutAvailability(undefined, "compatibility").available).toBe(false);
+    setTestEnv({ ...LIVE_OK, PERSONAL_ORDERS_ENABLED: "false" });
+    expect(getCheckoutAvailability(undefined, "personal").available).toBe(false);
+    expect(getCheckoutAvailability(undefined, "compatibility").available).toBe(true);
   });
 });

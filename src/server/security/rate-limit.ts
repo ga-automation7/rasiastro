@@ -17,6 +17,9 @@ export const RATE_LIMITS = {
   placeSearch: { name: "place_search", limit: 120, windowSeconds: 600 },
   orderPreview: { name: "order_preview", limit: 60, windowSeconds: 600 },
   orderCreate: { name: "order_create", limit: 15, windowSeconds: 3600 },
+  // Separate buckets per product, so heavy use of one product never blocks the other.
+  compatibilityPreview: { name: "compat_preview", limit: 60, windowSeconds: 600 },
+  compatibilityCreate: { name: "compat_create", limit: 15, windowSeconds: 3600 },
   checkout: { name: "checkout", limit: 20, windowSeconds: 3600 },
   paymentRefresh: { name: "payment_refresh", limit: 60, windowSeconds: 600 },
   accessExchange: { name: "access_exchange", limit: 30, windowSeconds: 600 },

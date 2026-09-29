@@ -25,7 +25,7 @@ export const GET = withErrors("orders.pdf", async (_request: Request, context: {
   const rows = await db.query<{ key: string | null }>(`select pdf_storage_key as key from reports where order_id = $1::uuid`, [orderId]);
   const key = rows[0]?.key;
   if (!order || !key) throw orderNotAccessible();
-  const filename = `RasiAstro-${order.reference}.pdf`;
+  const filename = `RasiAstro-${order.reference}${order.product === "compatibility" ? "-compatibility" : ""}.pdf`;
   const storage = getStorage();
   const signed = await storage.signedDownloadUrl(key, filename, 60);
   if (signed) return NextResponse.redirect(signed, { status: 302, headers: PRIVATE_HEADERS });

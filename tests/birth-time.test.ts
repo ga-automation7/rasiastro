@@ -74,14 +74,14 @@ describe("birth resolution with the place database", () => {
   });
 
   it("asks the customer to choose when the time happened twice", async () => {
-    const preview = await previewOrder(orderInput({}, { placeId: "demo:new-york", birthDate: "2021-11-07", birthTime: "01:30" }), "dst-test");
+    const preview = await previewOrder(orderInput({}, { placeId: "demo:new-york", birthDate: "2000-10-29", birthTime: "01:30" }), "dst-test");
     expect(preview.dstOverlap).not.toBeNull();
-    const chosen = await previewOrder(orderInput({}, { placeId: "demo:new-york", birthDate: "2021-11-07", birthTime: "01:30", dstChoice: "later" }), "dst-test");
+    const chosen = await previewOrder(orderInput({}, { placeId: "demo:new-york", birthDate: "2000-10-29", birthTime: "01:30", dstChoice: "later" }), "dst-test");
     expect(chosen.dstOverlap).toBeNull();
     expect(chosen.birth?.utcOffsetLabel).toBe("UTC-05:00");
   });
 
   it("rejects a time that did not exist locally", async () => {
-    await expect(previewOrder(orderInput({}, { placeId: "demo:new-york", birthDate: "2021-03-14", birthTime: "02:30" }), "gap-test")).rejects.toThrow(/did not exist/);
+    await expect(previewOrder(orderInput({}, { placeId: "demo:new-york", birthDate: "2000-04-02", birthTime: "02:30" }), "gap-test")).rejects.toThrow(/did not exist/);
   });
 });

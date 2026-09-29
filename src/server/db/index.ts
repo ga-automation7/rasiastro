@@ -1,4 +1,4 @@
-import { getEnv, isProductionDeployment } from "../config/env";
+import { getEnv, isProductionDeployment, isServerlessRuntime } from "../config/env";
 import { runMigrations } from "./migrate";
 import type { Database } from "./types";
 
@@ -31,8 +31,13 @@ async function openDatabase(): Promise<Database> {
     // implicitly at request time.
     return createPostgresDatabase(env.DATABASE_URL);
   }
-  if (env.APP_MODE === "live" || isProductionDeployment(env)) {
-    throw new Error("DATABASE_URL is required in live mode.");
+  if (env.APP_MODE !== "demo" || isProductionDeployment(env)) {
+    throw new Error("DATABASE_URL is required in sandbox and live modes.");
+  }
+  if (isServerlessRuntime()) {
+    // Serverless hosts have no persistent disk; a local database there would silently
+    // lose orders between requests. The site shows its "preview" state instead.
+    throw new Error("DATABASE_URL is required on a hosted deployment (the local demo database only runs on your computer).");
   }
   const { createPgliteDatabase } = await import("./pglite");
   const db = await createPgliteDatabase(env.NODE_ENV === "test" ? null : env.LOCAL_DB_DIR);

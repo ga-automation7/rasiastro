@@ -16,7 +16,10 @@ import { claimDueMessages, markDispatched, markDispatchFailed, type OutboxMessag
 async function dispatchOne(message: OutboxMessage): Promise<void> {
   const env = getEnv();
   if (chooseProviders(env).jobs === "inngest") {
-    await inngest.send({ id: message.dedupeKey, name: message.topic === "report.generate" ? EVENTS.generate : EVENTS.deliver, data: { orderId: message.orderId } });
+    // The product rides along so Inngest can apply a separate concurrency limit per product.
+    const rows = await (await getDb()).query<{ product: string }>(`select product from orders where id = $1::uuid`, [message.orderId]);
+    const product = rows[0]?.product ?? "personal";
+    await inngest.send({ id: message.dedupeKey, name: message.topic === "report.generate" ? EVENTS.generate : EVENTS.deliver, data: { orderId: message.orderId, product } });
     return;
   }
   const { runLocally } = await import("./local-runner");

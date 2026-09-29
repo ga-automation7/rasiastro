@@ -11,18 +11,31 @@ import { parseIsoDate, parseTime24 } from "./birth-time";
  */
 export const TIME_WINDOW_OPTIONS = [15, 30, 60, 120, 180] as const;
 export const EARLIEST_BIRTH_DATE = "1900-01-01";
-export const CONSENT_VERSION = "2026-09-v1";
+export const CONSENT_VERSION = "2026-10-v2";
+/**
+ * Age policy: orders may only be placed by adults, and only about adults. Reports about
+ * children would need verifiable guardian consent, which this release does not build.
+ */
+export const MIN_AGE_YEARS = 18;
+
+/** True when someone born on isoDate is at least `years` old today (UTC calendar). */
+export function isAtLeastAge(isoDate: string, years: number, today: Date = new Date()): boolean {
+  const date = parseIsoDate(isoDate);
+  if (!date) return false;
+  const cutoff = new Date(Date.UTC(today.getUTCFullYear() - years, today.getUTCMonth(), today.getUTCDate()));
+  return Date.UTC(date.year, date.month - 1, date.day) <= cutoff.getTime();
+}
 
 const noControlChars = (value: string) => !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(value);
 
-const cleanText = (max: number) =>
+export const cleanText = (max: number) =>
   z
     .string()
     .trim()
     .max(max, `Please keep this under ${max} characters`)
     .refine(noControlChars, "Contains unsupported characters");
 
-const optionalText = (max: number) =>
+export const optionalText = (max: number) =>
   z
     .union([cleanText(max), z.null()])
     .optional()
@@ -60,7 +73,8 @@ export const BirthDetailsSchema = z
       .refine((v) => parseIsoDate(v) !== null, "Please enter a valid date")
       .refine((v) => v >= EARLIEST_BIRTH_DATE, "Birth dates before 1900 are not supported")
       // One day of slack covers customers ahead of UTC (e.g. IST just after midnight).
-      .refine((v) => v <= new Date(Date.now() + 86_400_000).toISOString().slice(0, 10), "The birth date cannot be in the future"),
+      .refine((v) => v <= new Date(Date.now() + 86_400_000).toISOString().slice(0, 10), "The birth date cannot be in the future")
+      .refine((v) => isAtLeastAge(v, MIN_AGE_YEARS), "Reports are available for adults (18 or older) only"),
     timeCertainty: z.enum(["exact", "approximate", "unknown"]),
     birthTime: z.string().nullable().default(null),
     timeWindowMinutes: z
@@ -91,6 +105,12 @@ export const QuestionSchema = cleanText(QUESTION_MAX_LENGTH)
   .min(QUESTION_MIN_LENGTH, `Please write at least ${QUESTION_MIN_LENGTH} characters`)
   .refine((v) => /\p{L}/u.test(v), "Please write a question");
 
+export const EmailSchema = z.string().trim().toLowerCase().pipe(z.email("Please enter a valid email address").max(254));
+export const PhoneSchema = z
+  .string()
+  .transform((v) => normalizePhone(v))
+  .refine((v): v is string => v !== null, "Please enter a valid mobile number (10 digits, or + country code)");
+
 export const OrderInputSchema = z
   .object({
     tradition: z.enum(TRADITION_CODES),
@@ -100,12 +120,10 @@ export const OrderInputSchema = z
     additionalContext: optionalText(1000),
     includeQuestions: z.boolean(),
     questions: z.array(z.string()).max(PRICING.questionsAddon.questionCount),
-    email: z.string().trim().toLowerCase().pipe(z.email("Please enter a valid email address").max(254)),
-    phone: z
-      .string()
-      .transform((v) => normalizePhone(v))
-      .refine((v): v is string => v !== null, "Please enter a valid mobile number (10 digits, or + country code)"),
+    email: EmailSchema,
+    phone: PhoneSchema,
     consentProcessing: z.literal(true, { error: "Please agree so we can prepare and deliver your report" }),
+    adultConfirmed: z.literal(true, { error: "Please confirm you are 18 or older" }),
   })
   .superRefine((value, ctx) => {
     if (value.tradition === "western" && (value.known.nakshatra !== null || value.known.pada !== null)) {

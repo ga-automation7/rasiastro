@@ -1,3 +1,6 @@
+/** Demo = simulated, sandbox = payment provider test mode, live = real money. */
+export type AppMode = "demo" | "sandbox" | "live";
+
 /** Shape of the order status shown to customers (shared by server and browser). */
 export type StageState = "done" | "active" | "pending" | "failed" | "skipped";
 
@@ -8,7 +11,10 @@ export type DeliveryStatus = "not_sent" | "sending" | "sent" | "failed";
 export interface OrderStatusView {
   orderId: string;
   reference: string;
-  mode: "demo" | "live";
+  mode: AppMode;
+  product: "personal" | "compatibility";
+  /** Compatibility connection category, e.g. "Friendship". */
+  categoryLabel: string | null;
   traditionTitle: string;
   languageName: string;
   totalLabel: string;

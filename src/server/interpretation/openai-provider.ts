@@ -1,7 +1,8 @@
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
-import { PART_SCHEMAS, type PartName } from "./schema";
-import { AiConfigurationError, RetriableAiError, type GeneratedPart, type InterpretationProvider } from "./provider";
+import { PAIR_PART_SCHEMAS, isPairPart } from "./pair-schema";
+import { PART_SCHEMAS } from "./schema";
+import { AiConfigurationError, RetriableAiError, type AnyPartName, type GeneratedPart, type InterpretationProvider } from "./provider";
 import { InvalidInterpretationError } from "./validate";
 
 /**
@@ -34,14 +35,15 @@ export class OpenAiInterpretationProvider implements InterpretationProvider {
     this.client = new OpenAI({ apiKey: config.apiKey, timeout: config.timeoutMs, maxRetries: 0 });
   }
 
-  async generate(part: PartName, prompt: { instructions: string; userContent: string }): Promise<GeneratedPart> {
+  async generate(part: AnyPartName, prompt: { instructions: string; userContent: string }): Promise<GeneratedPart> {
+    const schema = isPairPart(part) ? PAIR_PART_SCHEMAS[part] : PART_SCHEMAS[part];
     const started = Date.now();
     try {
       const response = await this.client.responses.parse({
         model: this.config.model,
         instructions: prompt.instructions,
         input: prompt.userContent,
-        text: { format: zodTextFormat(PART_SCHEMAS[part], `rasi_astro_${part}`) },
+        text: { format: zodTextFormat(schema, `rasi_astro_${part}`) },
         max_output_tokens: this.config.maxOutputTokens,
         store: false,
         ...(this.config.reasoningEffort ? { reasoning: { effort: this.config.reasoningEffort } } : {}),

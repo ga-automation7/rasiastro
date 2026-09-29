@@ -13,8 +13,9 @@ import { GENERATION_STEPS, isPermanentError, markGenerationFailed, runGeneration
 /**
  * Inngest functions (live mode). Each pipeline step is a separate `step.run`, so
  * Inngest checkpoints completed steps and retries only the step that failed.
- * Concurrency: at most REPORT_CONCURRENCY reports at once overall, and never two runs
- * for the same order.
+ * Concurrency: at most REPORT_CONCURRENCY reports at once PER PRODUCT (so a burst of
+ * compatibility orders never starves personal reports, and vice versa), and never two
+ * runs for the same order. Inngest allows two concurrency constraints per function.
  */
 const REPORT_CONCURRENCY = Math.max(1, Math.min(20, Number(process.env.REPORT_CONCURRENCY ?? 3)));
 
@@ -30,7 +31,12 @@ export const generateReport = inngest.createFunction(
     name: "Generate report",
     triggers: [{ event: EVENTS.generate }],
     retries: 3,
-    concurrency: [{ limit: REPORT_CONCURRENCY }, { key: "event.data.orderId", limit: 1 }],
+    concurrency: [
+      { key: "event.data.product", limit: REPORT_CONCURRENCY },
+      { key: "event.data.orderId", limit: 1 },
+    ],
+    // A generation must finish or fail within this window; the sweeper resumes stragglers.
+    timeouts: { finish: "30m" },
     onFailure: async ({ event, error }) => {
       const orderId = orderIdFrom((event.data as { event?: { data?: unknown } }).event?.data);
       await markGenerationFailed(orderId, error);

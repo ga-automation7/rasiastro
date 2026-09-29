@@ -36,6 +36,22 @@ export function setTestEnv(overrides: Record<string, string | undefined> = {}): 
     OWNER_ALERT_EMAIL: undefined,
     DEMO_USE_REAL_AI: "false",
     DEMO_SEND_REAL_EMAIL: "false",
+    // Reset everything a test may have set, so settings never leak between tests.
+    VERCEL_PROJECT_PRODUCTION_URL: undefined,
+    CASHFREE_ENV: undefined,
+    APP_SECRET: undefined,
+    SUPABASE_URL: undefined,
+    SUPABASE_SERVICE_ROLE_KEY: undefined,
+    INNGEST_EVENT_KEY: undefined,
+    INNGEST_SIGNING_KEY: undefined,
+    INNGEST_DEV: undefined,
+    BUSINESS_LEGAL_NAME: undefined,
+    BUSINESS_ADDRESS: undefined,
+    GRIEVANCE_OFFICER_NAME: undefined,
+    SUPPORT_PHONE: undefined,
+    PERSONAL_ORDERS_ENABLED: undefined,
+    COMPATIBILITY_ORDERS_ENABLED: undefined,
+    OPENAI_MODEL_COMPATIBILITY: undefined,
   };
   for (const [k, v] of Object.entries({ ...base, ...overrides })) {
     if (v === undefined) delete process.env[k];
@@ -96,6 +112,7 @@ export function orderInput(overrides: Partial<OrderInputRaw> = {}, birth: Partia
     email: "customer@example.com",
     phone: "9876543210",
     consentProcessing: true,
+    adultConfirmed: true,
     ...overrides,
   };
 }

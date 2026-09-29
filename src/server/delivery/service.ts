@@ -1,4 +1,5 @@
-import { TRADITIONS } from "@/config/languages";
+import { TRADITIONS, type LanguageCode } from "@/config/languages";
+import { getPairDictionary } from "@/i18n/pair";
 import { issueAccessToken } from "../access/tokens";
 import { getEnv } from "../config/env";
 import { getDb, type SqlExecutor } from "../db";
@@ -19,6 +20,13 @@ function accessLink(token: string): string {
 
 function traditionLabel(code: "indian" | "western"): string {
   return TRADITIONS.find((t) => t.code === code)?.title ?? code;
+}
+
+/** What the email calls the report: the tradition, or the compatibility category. */
+function reportLabel(order: { product: string; tradition: "indian" | "western"; compatibilityCategory: string | null }, language: LanguageCode): string {
+  if (order.product !== "compatibility" || !order.compatibilityCategory) return traditionLabel(order.tradition);
+  const pair = getPairDictionary(language);
+  return `${pair.reportTitle} · ${pair.categories[order.compatibilityCategory as keyof typeof pair.categories]}`;
 }
 
 async function ensureDeliveryRow(db: SqlExecutor, orderId: string, kind: "report_ready" | "access_recovery", dedupeKey: string, provider: string) {
@@ -53,7 +61,7 @@ export async function deliverReport(orderId: string, options: { resend?: boolean
     link: accessLink(access.token),
     expiresAt: access.expiresAt,
     supportEmail: env.SUPPORT_EMAIL,
-    traditionLabel: traditionLabel(order.tradition),
+    traditionLabel: reportLabel(order, order.language),
   });
   try {
     const result = await provider.send({
@@ -108,8 +116,8 @@ export async function processRecoveryRequest(email: string, reference: string | 
   if (!(await consumeRateLimit(db, RATE_LIMITS.recoveryPerIp, clientKey))) return;
   if (!(await consumeRateLimit(db, RATE_LIMITS.recoveryPerEmail, `email:${normalized}`))) return;
 
-  const orders = await db.query<{ id: string; reference: string; tradition: "indian" | "western" }>(
-    `select id, reference, tradition from orders
+  const orders = await db.query<{ id: string; reference: string; tradition: "indian" | "western"; product: string; compatibility_category: string | null }>(
+    `select id, reference, tradition, product, compatibility_category from orders
       where lower(report_email) = $1 and payment_status = 'paid' and mode = $2
         and ($3::text is null or reference = $3::text)
       order by created_at desc limit 5`,
@@ -122,7 +130,7 @@ export async function processRecoveryRequest(email: string, reference: string | 
   const links = [];
   for (const o of orders) {
     const access = await issueAccessToken(db, o.id, "recovery_email", env.ACCESS_LINK_TTL_DAYS);
-    links.push({ reference: o.reference, link: accessLink(access.token), traditionLabel: traditionLabel(o.tradition) });
+    links.push({ reference: o.reference, link: accessLink(access.token), traditionLabel: reportLabel({ product: o.product, tradition: o.tradition, compatibilityCategory: o.compatibility_category }, "en") });
   }
   const provider = getEmailProvider();
   const message = recoveryEmail({ links, supportEmail: env.SUPPORT_EMAIL });

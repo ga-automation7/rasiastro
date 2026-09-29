@@ -30,8 +30,13 @@ const numberFromEnv = z
 
 const EnvSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-  /** demo = synthetic payments, sample chart data allowed, no real money. live = real providers only. */
-  APP_MODE: z.enum(["demo", "live"]).default("demo"),
+  /**
+   * demo    = simulated payments and sample report text; no real money, no paid services.
+   * sandbox = every real service, but the payment provider's TEST environment (no real money).
+   * live    = real providers only, real money.
+   * Hosted deployments must set this explicitly (see readiness.ts).
+   */
+  APP_MODE: z.enum(["demo", "sandbox", "live"]).default("demo"),
   PUBLIC_SITE_URL: z.string().url().default("http://localhost:3000"),
   /** Used to key rate-limit buckets without storing raw IPs or emails. */
   APP_SECRET: optionalString,
@@ -93,12 +98,43 @@ const EnvSchema = z.object({
 
   BUSINESS_LEGAL_NAME: optionalString,
   BUSINESS_ADDRESS: optionalString,
+  /** e.g. "Sole proprietorship", "LLP (LLPIN AAA-1234)", "Private limited company (CIN U12345...)". */
+  BUSINESS_REGISTRATION: optionalString,
+  BUSINESS_GSTIN: optionalString,
+  SUPPORT_PHONE: optionalString,
   GRIEVANCE_OFFICER_NAME: optionalString,
+  GRIEVANCE_OFFICER_DESIGNATION: optionalString,
+  GRIEVANCE_OFFICER_EMAIL: optionalString,
+  GRIEVANCE_OFFICER_PHONE: optionalString,
+
+  /** Independent product switches: turning one off never affects the other. */
+  PERSONAL_ORDERS_ENABLED: z.enum(["true", "false"]).default("true"),
+  COMPATIBILITY_ORDERS_ENABLED: z.enum(["true", "false"]).default("true"),
+  /** Optional separate model for compatibility reports (defaults to OPENAI_MODEL). */
+  OPENAI_MODEL_COMPATIBILITY: optionalString,
+
+  /** Customer-facing service levels. Set them from measured live performance. */
+  DELIVERY_TYPICAL_MINUTES: intFromEnv(30, 1, 1440),
+  DELIVERY_MAX_HOURS: intFromEnv(24, 1, 168),
+  REFUND_INITIATION_WORKING_DAYS: intFromEnv(7, 1, 30),
 
   VERCEL_ENV: optionalString,
+  /** Set by Vercel: the project's production domain (e.g. rasiastro.com or x.vercel.app). */
+  VERCEL_PROJECT_PRODUCTION_URL: optionalString,
 });
 
 export type Env = z.infer<typeof EnvSchema>;
+export type AppMode = Env["APP_MODE"];
+
+/** Sandbox and live use the real providers (database, AI, email, storage, jobs); only demo simulates them. */
+export function usesRealProviders(env: Pick<Env, "APP_MODE"> = getEnv()): boolean {
+  return env.APP_MODE !== "demo";
+}
+
+/** True when APP_MODE was set explicitly (a hosted deployment must never fall back to a default mode). */
+export function isAppModeExplicit(): boolean {
+  return Boolean(process.env.APP_MODE && process.env.APP_MODE.trim());
+}
 
 let cached: Env | undefined;
 
@@ -126,12 +162,30 @@ export function getAppSecret(env: Env = getEnv()): string {
   return env.APP_SECRET ?? DEMO_SECRET;
 }
 
-export function isProductionDeployment(env: Env = getEnv()): boolean {
-  if (env.VERCEL_ENV === "production") return true;
+const PRODUCTION_HOSTS = new Set(["rasiastro.com", "www.rasiastro.com"]);
+
+function hostOf(value: string | undefined): string | null {
+  if (!value) return null;
   try {
-    const host = new URL(env.PUBLIC_SITE_URL).hostname;
-    return host === "rasiastro.com" || host === "www.rasiastro.com";
+    return new URL(value.includes("://") ? value : `https://${value}`).hostname.toLowerCase();
   } catch {
-    return false;
+    return null;
   }
+}
+
+/**
+ * True for the real shop at rasiastro.com: either the configured public URL, or a
+ * Vercel production deployment whose production domain is rasiastro.com. A Vercel
+ * deployment on a *.vercel.app address is a preview/staging site, not the shop.
+ */
+export function isProductionDeployment(env: Env = getEnv()): boolean {
+  const publicHost = hostOf(env.PUBLIC_SITE_URL);
+  if (publicHost && PRODUCTION_HOSTS.has(publicHost)) return true;
+  const vercelProductionHost = hostOf(env.VERCEL_PROJECT_PRODUCTION_URL);
+  return env.VERCEL_ENV === "production" && vercelProductionHost !== null && PRODUCTION_HOSTS.has(vercelProductionHost);
+}
+
+/** Serverless platforms have no persistent local disk, so local demo storage cannot work there. */
+export function isServerlessRuntime(): boolean {
+  return Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 }

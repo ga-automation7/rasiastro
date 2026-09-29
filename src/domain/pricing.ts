@@ -1,6 +1,7 @@
 import { CURRENCY, PRICING, PRICING_VERSION } from "@/config/pricing";
 
-export type PackageCode = "report" | "report_with_questions";
+export type Product = "personal" | "compatibility";
+export type PackageCode = "report" | "report_with_questions" | "compatibility_pair";
 
 export interface PriceLine {
   code: string;
@@ -11,6 +12,8 @@ export interface PriceLine {
 export interface PriceQuote {
   pricingVersion: string;
   currency: typeof CURRENCY;
+  /** Absent in snapshots stored before compatibility existed (treat as personal). */
+  product?: Product;
   packageCode: PackageCode;
   includesQuestions: boolean;
   questionCount: number;
@@ -38,6 +41,7 @@ export function quotePackage(includeQuestions: boolean): PriceQuote {
   return {
     pricingVersion: PRICING_VERSION,
     currency: CURRENCY,
+    product: "personal",
     packageCode: includeQuestions ? "report_with_questions" : "report",
     includesQuestions: includeQuestions,
     questionCount: includeQuestions ? PRICING.questionsAddon.questionCount : 0,
@@ -46,6 +50,27 @@ export function quotePackage(includeQuestions: boolean): PriceQuote {
     totalAmountPaise: base + addon,
     lines,
   };
+}
+
+/** Compatibility: one price for the pair, whatever the category. No add-ons. */
+export function quoteCompatibility(): PriceQuote {
+  const total = PRICING.compatibility.amountPaise;
+  return {
+    pricingVersion: PRICING_VERSION,
+    currency: CURRENCY,
+    product: "compatibility",
+    packageCode: "compatibility_pair",
+    includesQuestions: false,
+    questionCount: 0,
+    baseAmountPaise: total,
+    addonAmountPaise: 0,
+    totalAmountPaise: total,
+    lines: [{ code: PRICING.compatibility.code, label: "Compatibility report for two people (web + PDF)", amountPaise: total }],
+  };
+}
+
+export function productForPackage(packageCode: PackageCode): Product {
+  return packageCode === "compatibility_pair" ? "compatibility" : "personal";
 }
 
 export function packageIncludesQuestions(packageCode: PackageCode): boolean {

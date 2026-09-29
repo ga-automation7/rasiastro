@@ -1,5 +1,10 @@
-import type { PartName } from "./schema";
 import type { InterpretationInput } from "./input";
+import type { PairInterpretationInput } from "./pair-input";
+import type { PairPartName } from "./pair-schema";
+import type { PartName } from "./schema";
+
+export type AnyPartName = PartName | PairPartName;
+export type AnyInterpretationInput = InterpretationInput | PairInterpretationInput;
 
 export interface GeneratedPart {
   raw: unknown;
@@ -16,7 +21,7 @@ export interface InterpretationProvider {
   readonly id: "openai" | "demo";
   readonly model: string;
   readonly isDemo: boolean;
-  generate(part: PartName, prompt: { instructions: string; userContent: string }, input: InterpretationInput): Promise<GeneratedPart>;
+  generate(part: AnyPartName, prompt: { instructions: string; userContent: string }, input: AnyInterpretationInput): Promise<GeneratedPart>;
 }
 
 /** A failure worth retrying later (timeouts, rate limits, provider outages). */

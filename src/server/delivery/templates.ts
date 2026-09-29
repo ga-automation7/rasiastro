@@ -13,7 +13,7 @@ function layout(lang: LanguageCode, title: string, inner: ReturnType<typeof html
 <div style="max-width:560px;margin:0 auto;padding:28px 20px;">
   <p style="margin:0 0 18px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#8a6219;">Rasi Astro</p>
   <div style="background:#ffffff;border-radius:12px;padding:26px 24px;border:1px solid #e7e0cf;">${inner}</div>
-  <p style="font-size:12px;color:#7a7466;margin-top:18px;">Rasi Astro · rasiastro.com · Your stars, your story.</p>
+  <p style="font-size:12px;color:#7a7466;margin-top:18px;">Rasi Astro · rasiastro.com</p>
 </div></body></html>`.value;
 }
 

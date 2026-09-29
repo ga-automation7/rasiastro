@@ -2,7 +2,9 @@ import fs from "node:fs";
 import type { Browser } from "puppeteer-core";
 import { getLanguage } from "@/config/languages";
 import { getEnv } from "../config/env";
-import type { ReportDocument } from "./document";
+import { isPairDocument, type AnyReportDocument } from "./pair-document";
+import { PAIR_REPORT_CSS, renderPairReportBody } from "./pair-render";
+import { PAIR_SVG_CSS } from "./pair-svg";
 import { REPORT_FONT_STACK, REPORT_HEADING_STACK, embeddedFontCss } from "./fonts";
 import { html, raw } from "./html";
 import { REPORT_CSS, renderReportBody } from "./render";
@@ -23,15 +25,18 @@ const PDF_PALETTE = `
   --r-gold: #b8862b; --r-gold-ink: #8a6219; --r-note-bg: #f7f3ea; --r-chip-bg: #efe9f8; --r-chip-ink: #3b2f73;
   --r-banner-bg: #fff4d6; --r-banner-ink: #6b4a00; --r-banner-line: #e6c66e;
   --chart-bg: #fffdf8; --chart-center: #f5f0e4; --chart-line: #b9a57a; --chart-ink: #1f1b4d; --chart-muted: #7a7466;
+  --pair-a: #2b2f6b; --pair-a-soft: #dfe0f2; --pair-b: #b8862b; --pair-b-soft: #f6e8c8; --pair-b-ink: #8a6219; --pair-both: #e9dcc0;
+  --pair-soft: #2f7d78; --pair-hard: #c2452d;
 `;
 
-export function buildPdfHtml(doc: ReportDocument): string {
-  const body = renderReportBody(doc);
+export function buildPdfHtml(doc: AnyReportDocument): string {
+  const pair = isPairDocument(doc);
+  const body = pair ? renderPairReportBody(doc) : renderReportBody(doc);
   return html`<!doctype html>
 <html lang="${getLanguage(doc.language).htmlLang}">
 <head>
 <meta charset="utf-8">
-<title>Rasi Astro report ${doc.orderReference}</title>
+<title>Rasi Astro ${pair ? "compatibility report" : "report"} ${doc.orderReference}</title>
 <style>${raw(embeddedFontCss())}</style>
 <style>
   @page { size: A4; margin: 18mm 16mm 20mm 16mm; }
@@ -39,6 +44,8 @@ export function buildPdfHtml(doc: ReportDocument): string {
   html, body { margin: 0; padding: 0; background: #ffffff; }
   body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   ${REPORT_CSS}
+  ${PAIR_SVG_CSS}
+  ${PAIR_REPORT_CSS}
   .report { font-size: 11.5pt; }
   .report h1 { font-size: 24pt; }
   .report h2 { font-size: 16pt; }
@@ -109,14 +116,14 @@ async function openBrowser(): Promise<{ browser: Browser; source: PdfBrowserSour
   return { browser, source, close: () => browser.close() };
 }
 
-type PdfRenderer = (doc: ReportDocument) => Promise<{ pdf: Uint8Array; renderer: string }>;
+type PdfRenderer = (doc: AnyReportDocument) => Promise<{ pdf: Uint8Array; renderer: string }>;
 let rendererOverride: PdfRenderer | null = null;
 /** Tests that are not about the PDF itself can skip launching a browser. */
 export function setPdfRendererForTests(renderer: PdfRenderer | null): void {
   rendererOverride = renderer;
 }
 
-export async function renderPdf(doc: ReportDocument): Promise<{ pdf: Uint8Array; renderer: string }> {
+export async function renderPdf(doc: AnyReportDocument): Promise<{ pdf: Uint8Array; renderer: string }> {
   if (rendererOverride) return rendererOverride(doc);
   const content = buildPdfHtml(doc);
   const { browser, source, close } = await openBrowser();
@@ -137,7 +144,7 @@ export async function renderPdf(doc: ReportDocument): Promise<{ pdf: Uint8Array;
       printBackground: true,
       displayHeaderFooter: true,
       headerTemplate: "<div></div>",
-      footerTemplate: `<div style="width:100%;font-size:8px;color:#8a8598;text-align:center;font-family:Helvetica,Arial,sans-serif;">Rasi Astro · ${doc.orderReference} · <span class="pageNumber"></span> / <span class="totalPages"></span></div>`,
+      footerTemplate: `<div style="width:100%;font-size:7.5px;color:#8a8598;text-align:center;font-family:Helvetica,Arial,sans-serif;letter-spacing:0.02em;">rasiastro.com · ${doc.orderReference} · <span class="pageNumber"></span> / <span class="totalPages"></span></div>`,
       margin: { top: "16mm", bottom: "18mm", left: "15mm", right: "15mm" },
       tagged: true,
     });

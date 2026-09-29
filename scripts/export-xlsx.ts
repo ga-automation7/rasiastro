@@ -25,7 +25,7 @@ try {
     fs.mkdirSync(path.dirname(out), { recursive: true });
     fs.writeFileSync(out, buffer);
     console.log(`\n✓ Wrote ${path.resolve(out)}`);
-    console.log(`  Orders: ${counts.orders} · Birth details: ${counts.birthDetails} · Questions: ${counts.questions} · Payments: ${counts.payments}`);
+    console.log(`  Orders: ${counts.orders} · Participants: ${counts.participants} · Shared context: ${counts.sharedContext} · Questions: ${counts.questions} · Payments: ${counts.payments}`);
     console.log("  This file contains personal data. Keep it private and delete it when you no longer need it.\n");
   });
 } catch (error) {

@@ -1,6 +1,8 @@
 import type { LanguageCode } from "@/config/languages";
 import type { InterpretationInput } from "./input";
-import type { GeneratedPart, InterpretationProvider } from "./provider";
+import type { PairInterpretationInput } from "./pair-input";
+import { isPairPart, type PairPartContent, type PairPartName } from "./pair-schema";
+import type { AnyInterpretationInput, AnyPartName, GeneratedPart, InterpretationProvider } from "./provider";
 import type { PartContent, PartName } from "./schema";
 
 /**
@@ -108,7 +110,41 @@ export class DemoInterpretationProvider implements InterpretationProvider {
   readonly model = "demo-sample-text";
   readonly isDemo = true;
 
-  async generate(part: PartName, _prompt: { instructions: string; userContent: string }, input: InterpretationInput): Promise<GeneratedPart> {
-    return { raw: demoPartContent(part, input), inputTokens: 0, outputTokens: 0, latencyMs: 0 };
+  async generate(part: AnyPartName, _prompt: { instructions: string; userContent: string }, input: AnyInterpretationInput): Promise<GeneratedPart> {
+    const raw = isPairPart(part) ? demoPairContent(part, input as PairInterpretationInput) : demoPartContent(part, input as InterpretationInput);
+    return { raw, inputTokens: 0, outputTokens: 0, latencyMs: 0 };
   }
+}
+
+/** DEMO ONLY: placeholder compatibility text in the selected language (both people named via placeholders). */
+export function demoPairContent<P extends PairPartName>(part: P, input: PairInterpretationInput): PairPartContent<P> {
+  const t = DEMO_TEXT[input.language];
+  const both = `{{A}} · {{B}} — ${t.p1}`;
+  const pair = [both, t.p2];
+  if (part === "pair_core") {
+    const core: PairPartContent<"pair_core"> = {
+      overview: { headline: t.headline, paragraphs: pair },
+      personA: { paragraphs: [`{{A}} — ${t.p1}`], keyThemes: t.themes },
+      personB: { paragraphs: [`{{B}} — ${t.p1}`], keyThemes: t.themes },
+      factorExplanations: input.pairFactors.filter((f) => f.certainty !== "omitted").map((f) => ({ factorId: f.id, explanation: t.p1 })),
+    };
+    return core as PairPartContent<P>;
+  }
+  if (part === "pair_dynamics") {
+    const dynamics: PairPartContent<"pair_dynamics"> = {
+      communication: pair,
+      sharedStrengths: { paragraphs: [t.p1], points: [t.opportunity, t.themes[0]!, t.themes[2]!] },
+      potentialFriction: { paragraphs: [t.p2], points: [t.challenge] },
+      categoryFocus: input.category.themes.map((_, i) => ({ themeNumber: i + 1, title: t.themes[i % t.themes.length]!, paragraphs: [t.p1] })),
+    };
+    return dynamics as PairPartContent<P>;
+  }
+  const hasContext = input.people.some((p) => p.notes || p.knownDetails.length) || Object.values(input.shared).some(Boolean);
+  const synthesis: PairPartContent<"pair_synthesis"> = {
+    summary: pair,
+    discussTogether: [`${t.opportunity}?`, `${t.challenge}?`, `${t.themes.join(" · ")}?`],
+    contextResponse: hasContext ? t.p1 : "",
+    limitations: input.people.some((p) => !p.timeCertainty.startsWith("exact")) ? t.p2 : "",
+  };
+  return synthesis as PairPartContent<P>;
 }

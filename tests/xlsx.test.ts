@@ -30,20 +30,31 @@ describe("owner Excel export", () => {
     expect(counts.orders).toBe(2);
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(buffer as unknown as ArrayBuffer);
-    expect(wb.worksheets.map((w) => w.name)).toEqual(["About", "Orders", "Birth details", "Questions", "Report status", "Payments"]);
+    expect(wb.worksheets.map((w) => w.name)).toEqual(["About", "Orders", "Participants", "Questions", "Shared context", "Report status", "Payments", "By product"]);
+    const col = (sheet: ExcelJS.Worksheet, header: string) => {
+      let index = 0;
+      sheet.getRow(1).eachCell((cell, i) => {
+        if (cell.value === header) index = i;
+      });
+      expect(index, header).toBeGreaterThan(0);
+      return index;
+    };
 
     const orders = wb.getWorksheet("Orders")!;
     expect(orders.getRow(1).getCell(1).value).toBe("Order ID");
-    const total = orders.getRow(2).getCell(11).value;
+    const total = orders.getRow(2).getCell(col(orders, "Total (₹)")).value;
+    expect(orders.getRow(2).getCell(col(orders, "Product")).value).toBe("personal");
     expect(typeof total).toBe("number");
     expect([49, 69]).toContain(total);
     expect(orders.getRow(2).getCell(3).value).toBeInstanceOf(Date);
 
-    const birth = wb.getWorksheet("Birth details")!;
-    const names = [birth.getRow(2).getCell(3).value, birth.getRow(3).getCell(3).value];
+    const birth = wb.getWorksheet("Participants")!;
+    const nameCol = col(birth, "Name");
+    const names = [birth.getRow(2).getCell(nameCol).value, birth.getRow(3).getCell(nameCol).value];
     expect(names).toContain("'=cmd|' /C calc'!A0");
     expect(names).toContain("முருகன் செல்வம்");
-    expect(birth.getRow(2).getCell(4).value).toBeInstanceOf(Date);
+    expect(birth.getRow(2).getCell(col(birth, "Birth date")).value).toBeInstanceOf(Date);
+    expect(birth.getRow(2).getCell(col(birth, "Participant #")).value).toBe(1);
 
     const questions = wb.getWorksheet("Questions")!;
     const qCells = [2, 3, 4].map((r) => questions.getRow(r).getCell(4));

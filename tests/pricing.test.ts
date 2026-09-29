@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { PRICING } from "@/config/pricing";
+import { PRICING, PRICING_VERSION } from "@/config/pricing";
 import { formatInr, paiseToRupeeAmount, quotePackage, rupeeAmountToPaise } from "@/domain/pricing";
 import { getDb } from "@/server/db";
 import { createOrder } from "@/server/orders/service";
@@ -53,7 +53,7 @@ describe("server-side price authority", () => {
     );
     expect(rows[0]).toMatchObject({ total_amount_paise: 4900, base_amount_paise: 4900, addon_amount_paise: 0 });
     expect(rows[0]!.price_snapshot.totalAmountPaise).toBe(4900);
-    expect(rows[0]!.price_snapshot.pricingVersion).toBe("2026-09-v1");
+    expect(rows[0]!.price_snapshot.pricingVersion).toBe(PRICING_VERSION);
   });
 
   it("charges ₹69 when the question add-on is selected", async () => {

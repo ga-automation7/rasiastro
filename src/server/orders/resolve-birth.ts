@@ -38,7 +38,7 @@ export interface DstOverlapPrompt {
 
 export async function resolveBirth(db: SqlExecutor, birth: BirthDetailsInput): Promise<ResolvedBirth | DstOverlapPrompt> {
   const place = await getPlaceById(db, birth.placeId);
-  if (!place || (getEnv().APP_MODE === "live" && place.source !== "geonames")) {
+  if (!place || (getEnv().APP_MODE !== "demo" && place.source !== "geonames")) {
     throw validationError("Please search for and confirm the birthplace again.", { "birth.placeId": "Birthplace not found" });
   }
   if (!isValidTimeZone(place.timezoneId)) {

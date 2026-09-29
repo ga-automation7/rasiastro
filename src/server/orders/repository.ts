@@ -1,17 +1,22 @@
+import type { CompatibilityCategory } from "@/config/compatibility";
 import type { LanguageCode, TraditionCode } from "@/config/languages";
 import type { NakshatraKey, SignKey } from "@/domain/astrology/constants";
-import type { PackageCode, PriceQuote } from "@/domain/pricing";
+import type { AppMode, DeliveryStatus, GenerationStatus, PaymentStatus } from "@/domain/order-status";
+import type { PackageCode, PriceQuote, Product } from "@/domain/pricing";
 import { jsonParam, type SqlExecutor } from "../db";
 import type { ResolvedBirth } from "./resolve-birth";
 
-import type { DeliveryStatus, GenerationStatus, PaymentStatus } from "@/domain/order-status";
-
 export type { DeliveryStatus, GenerationStatus, PaymentStatus };
+
+/** Participant numbers: 1 is the personal-report subject or compatibility "Person A"; 2 is "Person B". */
+export type ParticipantNumber = 1 | 2;
 
 export interface Order {
   id: string;
   reference: string;
-  mode: "demo" | "live";
+  mode: AppMode;
+  product: Product;
+  compatibilityCategory: CompatibilityCategory | null;
   tradition: TraditionCode;
   language: LanguageCode;
   packageCode: PackageCode;
@@ -28,6 +33,8 @@ export interface Order {
   deliveryStatus: DeliveryStatus;
   consentProcessingAt: Date;
   consentVersion: string;
+  adultConfirmedAt: Date | null;
+  thirdPartyPermissionAt: Date | null;
   paidAt: Date | null;
   reportReadyAt: Date | null;
   generationFailureCode: string | null;
@@ -38,7 +45,9 @@ export interface Order {
 interface OrderRow {
   id: string;
   reference: string;
-  mode: "demo" | "live";
+  mode: AppMode;
+  product: Product;
+  compatibility_category: CompatibilityCategory | null;
   tradition: TraditionCode;
   report_language: LanguageCode;
   package_code: PackageCode;
@@ -55,6 +64,8 @@ interface OrderRow {
   delivery_status: DeliveryStatus;
   consent_processing_at: Date;
   consent_version: string;
+  adult_confirmed_at: Date | null;
+  third_party_permission_at: Date | null;
   paid_at: Date | null;
   report_ready_at: Date | null;
   generation_failure_code: string | null;
@@ -62,16 +73,18 @@ interface OrderRow {
   delete_after: Date;
 }
 
-export const ORDER_COLUMNS = `id, reference, mode, tradition, report_language, package_code, pricing_version, currency,
-  base_amount_paise, addon_amount_paise, total_amount_paise, price_snapshot, report_email, payer_phone,
-  payment_status, generation_status, delivery_status, consent_processing_at, consent_version, paid_at,
-  report_ready_at, generation_failure_code, created_at, delete_after`;
+export const ORDER_COLUMNS = `id, reference, mode, product, compatibility_category, tradition, report_language, package_code,
+  pricing_version, currency, base_amount_paise, addon_amount_paise, total_amount_paise, price_snapshot, report_email,
+  payer_phone, payment_status, generation_status, delivery_status, consent_processing_at, consent_version,
+  adult_confirmed_at, third_party_permission_at, paid_at, report_ready_at, generation_failure_code, created_at, delete_after`;
 
 export function mapOrder(r: OrderRow): Order {
   return {
     id: r.id,
     reference: r.reference,
     mode: r.mode,
+    product: r.product,
+    compatibilityCategory: r.compatibility_category,
     tradition: r.tradition,
     language: r.report_language,
     packageCode: r.package_code,
@@ -88,6 +101,8 @@ export function mapOrder(r: OrderRow): Order {
     deliveryStatus: r.delivery_status,
     consentProcessingAt: r.consent_processing_at,
     consentVersion: r.consent_version,
+    adultConfirmedAt: r.adult_confirmed_at,
+    thirdPartyPermissionAt: r.third_party_permission_at,
     paidAt: r.paid_at,
     reportReadyAt: r.report_ready_at,
     generationFailureCode: r.generation_failure_code,
@@ -116,7 +131,9 @@ export function isUuid(value: string): boolean {
 
 export interface NewOrder {
   reference: string;
-  mode: "demo" | "live";
+  mode: AppMode;
+  product: Product;
+  compatibilityCategory: CompatibilityCategory | null;
   tradition: TraditionCode;
   language: LanguageCode;
   quote: PriceQuote;
@@ -124,19 +141,22 @@ export interface NewOrder {
   payerPhone: string;
   consentVersion: string;
   deleteAfterDays: number;
+  thirdPartyPermission: boolean;
 }
 
 export async function insertOrder(tx: SqlExecutor, order: NewOrder): Promise<string> {
   const rows = await tx.query<{ id: string }>(
-    `insert into orders (reference, mode, tradition, report_language, package_code, pricing_version, currency,
-        base_amount_paise, addon_amount_paise, total_amount_paise, price_snapshot, report_email, payer_phone,
-        consent_processing_at, consent_version, delete_after)
-     values ($1, $2, $3, $4, $5, $6, $7, $8::int, $9::int, $10::int, $11::jsonb, $12, $13, now(), $14,
-        now() + ($15::int * interval '1 day'))
+    `insert into orders (reference, mode, product, compatibility_category, tradition, report_language, package_code, pricing_version,
+        currency, base_amount_paise, addon_amount_paise, total_amount_paise, price_snapshot, report_email, payer_phone,
+        consent_processing_at, consent_version, adult_confirmed_at, third_party_permission_at, delete_after)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::int, $11::int, $12::int, $13::jsonb, $14, $15, now(), $16, now(),
+        case when $17::boolean then now() else null end, now() + ($18::int * interval '1 day'))
      returning id`,
     [
       order.reference,
       order.mode,
+      order.product,
+      order.compatibilityCategory,
       order.tradition,
       order.language,
       order.quote.packageCode,
@@ -149,21 +169,23 @@ export async function insertOrder(tx: SqlExecutor, order: NewOrder): Promise<str
       order.reportEmail,
       order.payerPhone,
       order.consentVersion,
+      order.thirdPartyPermission,
       order.deleteAfterDays,
     ],
   );
   return rows[0]!.id;
 }
 
-export async function insertBirthDetails(tx: SqlExecutor, orderId: string, subjectName: string, birth: ResolvedBirth): Promise<void> {
+export async function insertBirthDetails(tx: SqlExecutor, orderId: string, subjectName: string, birth: ResolvedBirth, participant: ParticipantNumber = 1): Promise<void> {
   await tx.query(
-    `insert into birth_details (order_id, subject_name, birth_date, time_certainty, birth_time_local, time_window_minutes,
+    `insert into birth_details (order_id, participant, subject_name, birth_date, time_certainty, birth_time_local, time_window_minutes,
         place_id, place_name, place_region, place_country_code, place_country_name, latitude, longitude, timezone_id,
         utc_offset_seconds, birth_utc, offset_resolution, tz_database_version)
-     values ($1::uuid, $2, $3::date, $4, $5::time, $6::int, $7, $8, $9, $10, $11, $12::float8, $13::float8, $14, $15::int,
-        $16::timestamptz, $17, $18)`,
+     values ($1::uuid, $2::smallint, $3, $4::date, $5, $6::time, $7::int, $8, $9, $10, $11, $12, $13::float8, $14::float8, $15, $16::int,
+        $17::timestamptz, $18, $19)`,
     [
       orderId,
+      participant,
       subjectName,
       birth.birthDate,
       birth.timeCertainty,
@@ -191,14 +213,15 @@ export interface OrderContextInput {
   knownPada: number | null;
   knownAscendant: SignKey | null;
   otherKnownDetails: string | null;
+  /** Personal: notes about the reading. Compatibility: "additional information about this person". */
   additionalContext: string | null;
 }
 
-export async function insertContext(tx: SqlExecutor, orderId: string, c: OrderContextInput): Promise<void> {
+export async function insertContext(tx: SqlExecutor, orderId: string, c: OrderContextInput, participant: ParticipantNumber = 1): Promise<void> {
   await tx.query(
-    `insert into order_context (order_id, known_moon_sign, known_nakshatra, known_pada, known_ascendant, other_known_details, additional_context)
-     values ($1::uuid, $2, $3, $4::smallint, $5, $6, $7)`,
-    [orderId, c.knownMoonSign, c.knownNakshatra, c.knownPada, c.knownAscendant, c.otherKnownDetails, c.additionalContext],
+    `insert into order_context (order_id, participant, known_moon_sign, known_nakshatra, known_pada, known_ascendant, other_known_details, additional_context)
+     values ($1::uuid, $2::smallint, $3, $4, $5::smallint, $6, $7, $8)`,
+    [orderId, participant, c.knownMoonSign, c.knownNakshatra, c.knownPada, c.knownAscendant, c.otherKnownDetails, c.additionalContext],
   );
 }
 
@@ -209,6 +232,8 @@ export async function insertQuestions(tx: SqlExecutor, orderId: string, question
 }
 
 export interface StoredBirthDetails {
+  participant: ParticipantNumber;
+  participantId: string;
   subjectName: string;
   birthDate: string;
   timeCertainty: "exact" | "approximate" | "unknown";
@@ -227,54 +252,63 @@ export interface StoredBirthDetails {
   offsetResolution: ResolvedBirth["offsetResolution"];
 }
 
-export async function getBirthDetails(db: SqlExecutor, orderId: string): Promise<StoredBirthDetails | null> {
-  const rows = await db.query<{
-    subject_name: string;
-    birth_date: string;
-    time_certainty: StoredBirthDetails["timeCertainty"];
-    birth_time: string | null;
-    time_window_minutes: number | null;
-    place_id: string;
-    place_name: string;
-    place_region: string | null;
-    place_country_code: string;
-    place_country_name: string;
-    latitude: number;
-    longitude: number;
-    timezone_id: string;
-    utc_offset_seconds: number;
-    birth_utc: Date | null;
-    offset_resolution: ResolvedBirth["offsetResolution"];
-  }>(
-    `select subject_name, birth_date::text as birth_date, time_certainty, to_char(birth_time_local, 'HH24:MI') as birth_time,
-            time_window_minutes, place_id, place_name, place_region, place_country_code, place_country_name,
-            latitude, longitude, timezone_id, utc_offset_seconds, birth_utc, offset_resolution
-       from birth_details where order_id = $1::uuid`,
-    [orderId],
-  );
-  const r = rows[0];
-  if (!r) return null;
-  return {
-    subjectName: r.subject_name,
-    birthDate: r.birth_date,
-    timeCertainty: r.time_certainty,
-    birthTime: r.birth_time,
-    timeWindowMinutes: r.time_window_minutes,
-    placeId: r.place_id,
-    placeName: r.place_name,
-    placeRegion: r.place_region,
-    placeCountryCode: r.place_country_code,
-    placeCountryName: r.place_country_name,
-    latitude: Number(r.latitude),
-    longitude: Number(r.longitude),
-    timezoneId: r.timezone_id,
-    utcOffsetSeconds: r.utc_offset_seconds,
-    birthUtc: r.birth_utc,
-    offsetResolution: r.offset_resolution,
-  };
+interface BirthRow {
+  participant: ParticipantNumber;
+  participant_id: string;
+  subject_name: string;
+  birth_date: string;
+  time_certainty: StoredBirthDetails["timeCertainty"];
+  birth_time: string | null;
+  time_window_minutes: number | null;
+  place_id: string;
+  place_name: string;
+  place_region: string | null;
+  place_country_code: string;
+  place_country_name: string;
+  latitude: number;
+  longitude: number;
+  timezone_id: string;
+  utc_offset_seconds: number;
+  birth_utc: Date | null;
+  offset_resolution: ResolvedBirth["offsetResolution"];
 }
 
-export async function getContext(db: SqlExecutor, orderId: string): Promise<OrderContextInput | null> {
+const BIRTH_COLUMNS = `participant, participant_id, subject_name, birth_date::text as birth_date, time_certainty,
+  to_char(birth_time_local, 'HH24:MI') as birth_time, time_window_minutes, place_id, place_name, place_region,
+  place_country_code, place_country_name, latitude, longitude, timezone_id, utc_offset_seconds, birth_utc, offset_resolution`;
+
+const mapBirth = (r: BirthRow): StoredBirthDetails => ({
+  participant: Number(r.participant) as ParticipantNumber,
+  participantId: r.participant_id,
+  subjectName: r.subject_name,
+  birthDate: r.birth_date,
+  timeCertainty: r.time_certainty,
+  birthTime: r.birth_time,
+  timeWindowMinutes: r.time_window_minutes,
+  placeId: r.place_id,
+  placeName: r.place_name,
+  placeRegion: r.place_region,
+  placeCountryCode: r.place_country_code,
+  placeCountryName: r.place_country_name,
+  latitude: Number(r.latitude),
+  longitude: Number(r.longitude),
+  timezoneId: r.timezone_id,
+  utcOffsetSeconds: r.utc_offset_seconds,
+  birthUtc: r.birth_utc,
+  offsetResolution: r.offset_resolution,
+});
+
+export async function getBirthDetails(db: SqlExecutor, orderId: string, participant: ParticipantNumber = 1): Promise<StoredBirthDetails | null> {
+  const rows = await db.query<BirthRow>(`select ${BIRTH_COLUMNS} from birth_details where order_id = $1::uuid and participant = $2::smallint`, [orderId, participant]);
+  return rows[0] ? mapBirth(rows[0]) : null;
+}
+
+export async function listBirthDetails(db: SqlExecutor, orderId: string): Promise<StoredBirthDetails[]> {
+  const rows = await db.query<BirthRow>(`select ${BIRTH_COLUMNS} from birth_details where order_id = $1::uuid order by participant`, [orderId]);
+  return rows.map(mapBirth);
+}
+
+export async function getContext(db: SqlExecutor, orderId: string, participant: ParticipantNumber = 1): Promise<OrderContextInput | null> {
   const rows = await db.query<{
     known_moon_sign: SignKey | null;
     known_nakshatra: NakshatraKey | null;
@@ -282,7 +316,11 @@ export async function getContext(db: SqlExecutor, orderId: string): Promise<Orde
     known_ascendant: SignKey | null;
     other_known_details: string | null;
     additional_context: string | null;
-  }>(`select known_moon_sign, known_nakshatra, known_pada, known_ascendant, other_known_details, additional_context from order_context where order_id = $1::uuid`, [orderId]);
+  }>(
+    `select known_moon_sign, known_nakshatra, known_pada, known_ascendant, other_known_details, additional_context
+       from order_context where order_id = $1::uuid and participant = $2::smallint`,
+    [orderId, participant],
+  );
   const r = rows[0];
   if (!r) return null;
   return {
@@ -295,16 +333,41 @@ export async function getContext(db: SqlExecutor, orderId: string): Promise<Orde
   };
 }
 
+export interface CompatibilityContext {
+  howKnown: string | null;
+  knownDuration: string | null;
+  hopes: string | null;
+  sharedCircumstances: string | null;
+}
+
+export async function insertCompatibilityContext(tx: SqlExecutor, orderId: string, c: CompatibilityContext): Promise<void> {
+  await tx.query(
+    `insert into compatibility_context (order_id, how_known, known_duration, hopes, shared_circumstances) values ($1::uuid, $2, $3, $4, $5)`,
+    [orderId, c.howKnown, c.knownDuration, c.hopes, c.sharedCircumstances],
+  );
+}
+
+export async function getCompatibilityContext(db: SqlExecutor, orderId: string): Promise<CompatibilityContext | null> {
+  const rows = await db.query<{ how_known: string | null; known_duration: string | null; hopes: string | null; shared_circumstances: string | null }>(
+    `select how_known, known_duration, hopes, shared_circumstances from compatibility_context where order_id = $1::uuid`,
+    [orderId],
+  );
+  const r = rows[0];
+  return r ? { howKnown: r.how_known, knownDuration: r.known_duration, hopes: r.hopes, sharedCircumstances: r.shared_circumstances } : null;
+}
+
 export async function getQuestions(db: SqlExecutor, orderId: string): Promise<string[]> {
   const rows = await db.query<{ question: string }>(`select question from order_questions where order_id = $1::uuid order by position`, [orderId]);
   return rows.map((r) => r.question);
 }
 
-export async function recordFunnelEvent(
-  db: SqlExecutor,
-  event: "form_started" | "checkout_started" | "payment_verified" | "report_ready" | "delivery_failed" | "generation_failed",
-  mode: "demo" | "live",
-  orderId: string | null = null,
-): Promise<void> {
-  await db.query(`insert into funnel_events (event, order_id, mode) values ($1, $2::uuid, $3)`, [event, orderId, mode]);
+export type FunnelEvent = "form_started" | "checkout_started" | "payment_verified" | "report_ready" | "delivery_failed" | "generation_failed";
+
+/** Counts only. When an order is known, its product is recorded from the order itself. */
+export async function recordFunnelEvent(db: SqlExecutor, event: FunnelEvent, mode: AppMode, orderId: string | null = null, product: Product | null = null): Promise<void> {
+  await db.query(
+    `insert into funnel_events (event, order_id, mode, product)
+     values ($1, $2::uuid, $3, coalesce($4, (select o.product from orders o where o.id = $2::uuid)))`,
+    [event, orderId, mode, product],
+  );
 }

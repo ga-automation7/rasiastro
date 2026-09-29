@@ -19,8 +19,9 @@ NON-NEGOTIABLE RULES
 7. Write for this one person: specific to their chart, warm, clear and plain. Explain any astrology term the first time you use it. No filler, no repetition between sections, no generic horoscope text, no mention of being an AI.
 8. Do not include the person's name, birthplace or any contact details; the report template adds them.`;
 
-function languageRules(input: InterpretationInput): string {
-  const lang = languageInstruction(input.language);
+/** Language rules shared by the personal and compatibility prompts. */
+export function languageRulesFor(code: InterpretationInput["language"]): string {
+  const lang = languageInstruction(code);
   const specifics: Record<string, string> = {
     ta: "Use natural modern Tamil. Use Tamil astrology terms such as ராசி, நட்சத்திரம், லக்னம், தசை, புக்தி, கோசாரம்.",
     hi: "Use natural modern Hindi in Devanagari. Use Hindi astrology terms such as राशि, नक्षत्र, लग्न, दशा, अंतर्दशा, गोचर.",
@@ -29,7 +30,7 @@ function languageRules(input: InterpretationInput): string {
     ml: "Use natural modern Malayalam. Use Malayalam astrology terms such as രാശി, നക്ഷത്രം, ലഗ്നം, ദശ, അപഹാരം, ഗോചരം.",
     en: "Use clear, warm British/Indian English. Keep Sanskrit terms (Rasi, Nakshatra, Lagna, Dasha) with a short English explanation.",
   };
-  return `LANGUAGE: Write every text field entirely in ${lang}. ${specifics[input.language] ?? ""} Keep JSON keys, ids and factId/periodId/key values exactly as given (they are identifiers, not prose).`;
+  return `LANGUAGE: Write every text field entirely in ${lang}. ${specifics[code] ?? ""} Keep JSON keys, ids and factId/periodId/key values exactly as given (they are identifiers, not prose).`;
 }
 
 const PART_TASKS: Record<PartName, (input: InterpretationInput) => string> = {
@@ -65,7 +66,7 @@ const PART_TASKS: Record<PartName, (input: InterpretationInput) => string> = {
 };
 
 export function buildPrompt(part: PartName, input: InterpretationInput, priorSummary: string | null): { instructions: string; userContent: string } {
-  const instructions = `${SHARED_RULES}\n\n${languageRules(input)}\n\n${PART_TASKS[part](input)}\n\nReturn only JSON matching the provided schema.`;
+  const instructions = `${SHARED_RULES}\n\n${languageRulesFor(input.language)}\n\n${PART_TASKS[part](input)}\n\nReturn only JSON matching the provided schema.`;
   const payload: Record<string, unknown> = {
     tradition: input.tradition,
     report_language: input.language,
