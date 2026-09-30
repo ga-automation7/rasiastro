@@ -86,7 +86,9 @@ Payments (environment: ${paymentEnv ?? "PAYMENT_ENV not set"}, new checkouts: ${
         else bad(`compatibility model "${env.OPENAI_MODEL_COMPATIBILITY}" is NOT available to this account`);
       }
     } catch (error) {
-      bad(`OpenAI check failed: ${(error as Error).message}`);
+      // Only the status: OpenAI error texts can quote part of the key.
+      const status = (error as { status?: number }).status;
+      bad(`OpenAI check failed${status ? ` (HTTP ${status}${status === 401 ? ": the API key was rejected" : ""})` : `: ${(error as Error).name}`}`);
     }
   }
 

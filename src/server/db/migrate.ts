@@ -56,7 +56,18 @@ export async function runMigrations(db: Database, dir?: string): Promise<string[
       }
       continue;
     }
-    await db.transaction(async (tx) => {
+    const ran = await db.transaction(async (tx) => {
+      // Two deployments building at once must not both apply the same migration. A
+      // transaction-level advisory lock works through Supabase's transaction pooler
+      // (a session lock would not); whoever waits re-checks and skips what is done.
+      await tx.query("select pg_advisory_xact_lock($1::bigint)", [MIGRATION_LOCK_KEY]);
+      const done = await tx.query<{ checksum: string }>("select checksum from schema_migrations where version = $1", [migration.version]);
+      if (done[0]) {
+        if (done[0].checksum !== migration.checksum) {
+          throw new Error(`Migration ${migration.version} was modified after it was applied. Create a new migration instead.`);
+        }
+        return false;
+      }
       // Scripts are executed statement-by-statement inside the transaction.
       for (const statement of splitSqlStatements(migration.sql)) {
         await tx.query(statement);
@@ -65,10 +76,28 @@ export async function runMigrations(db: Database, dir?: string): Promise<string[
         migration.version,
         migration.checksum,
       ]);
+      return true;
     });
-    newlyApplied.push(migration.version);
+    if (ran) newlyApplied.push(migration.version);
   }
   return newlyApplied;
+}
+
+/** Arbitrary constant identifying "Rasi Astro schema migration" advisory locks. */
+const MIGRATION_LOCK_KEY = 7_202_609_300;
+
+/** Applied versions and the files not yet applied (read-only). */
+export async function getMigrationStatus(db: Database, dir?: string): Promise<{ applied: string[]; pending: string[] }> {
+  let applied: string[] = [];
+  try {
+    applied = (await db.query<{ version: string }>("select version from schema_migrations order by version")).map((r) => r.version);
+  } catch {
+    applied = [];
+  }
+  const pending = readMigrationFiles(dir)
+    .map((m) => m.version)
+    .filter((v) => !applied.includes(v));
+  return { applied, pending };
 }
 
 export async function getSchemaVersion(db: Database): Promise<string | null> {
