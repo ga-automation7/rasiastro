@@ -11,12 +11,13 @@ import { setTestEnv, setupTestDb } from "./helpers";
  */
 const SANDBOX = {
   APP_MODE: "sandbox",
-  CASHFREE_ENV: "sandbox",
+  PAYMENT_ENV: "test",
+  PAYMENT_PROVIDER: "cashfree",
   PUBLIC_SITE_URL: "https://rasi-astro.vercel.app",
   APP_SECRET: "x".repeat(40),
   DATABASE_URL: "postgres://u:p@localhost:5432/db",
-  CASHFREE_CLIENT_ID: "id",
-  CASHFREE_CLIENT_SECRET: "secret",
+  CASHFREE_TEST_CLIENT_ID: "id",
+  CASHFREE_TEST_CLIENT_SECRET: "secret",
   OPENAI_API_KEY: "sk-test",
   OPENAI_MODEL: "some-model",
   RESEND_API_KEY: "re_test",

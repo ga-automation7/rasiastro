@@ -9,6 +9,8 @@ import type { PartName } from "@/server/interpretation/schema";
 import { setInterpretationProviderForTests } from "@/server/interpretation/service";
 import { runGenerationLocally } from "@/server/jobs/local-runner";
 import { dispatchDue } from "@/server/jobs/dispatch";
+import { retryReportGeneration } from "@/server/jobs/retry";
+import { setPdfRendererForTests } from "@/server/reports/pdf";
 import { createOrder } from "@/server/orders/service";
 import { applyPaymentEvidence, startCheckout } from "@/server/payments/service";
 import { CapturingEmailProvider, orderInput, resetOverrides, setTestEnv, setupTestDb, stubPdf, THREE_QUESTIONS } from "./helpers";
@@ -40,7 +42,7 @@ async function paidOrder(options: { questions?: boolean; beforePay?: (orderId: s
   const db = await getDb();
   const [payment] = await db.query<{ provider_order_id: string }>("select provider_order_id from payments where order_id = $1::uuid", [created.orderId]);
   await db.query("update payments set provider_status = 'DEMO_SUCCESS' where provider_order_id = $1", [payment!.provider_order_id]);
-  await applyPaymentEvidence({ source: "demo", provider: "demo", providerOrderId: payment!.provider_order_id, providerPaymentId: "d", status: "paid", amountPaise: created.totalAmountPaise, currency: "INR", providerStatus: "DEMO_SUCCESS" });
+  await applyPaymentEvidence({ source: "demo", provider: "demo", environment: "demo", providerReference: null, providerOrderId: payment!.provider_order_id, providerPaymentId: "d", status: "paid", amountPaise: created.totalAmountPaise, currency: "INR", providerStatus: "DEMO_SUCCESS" });
   return created.orderId;
 }
 
@@ -159,6 +161,37 @@ describe("report pipeline", () => {
     expect(s.delivery_status).toBe("failed");
     const report = await (await getDb()).query("select pdf_storage_key from reports where order_id = $1::uuid", [orderId]);
     expect(report[0]).toBeTruthy();
+  });
+
+  it("a PDF failure after payment keeps the order paid, and the owner's retry finishes it without a new payment", async () => {
+    setPdfRendererForTests(async () => {
+      throw new Error("browser crashed");
+    });
+    const orderId = await paidOrder();
+    const db = await getDb();
+    for (let i = 0; i < 5; i += 1) {
+      await db.query("update report_jobs set lease_expires_at = now() - interval '1 second' where order_id = $1::uuid", [orderId]);
+      await runGenerationLocally(orderId);
+    }
+    const failed = await state(orderId);
+    expect(failed.generation_status).toBe("failed");
+    const paymentsBefore = await db.query<{ status: string }>("select status from payments where order_id = $1::uuid", [orderId]);
+    const [order] = await db.query<{ payment_status: string }>("select payment_status from orders where id = $1::uuid", [orderId]);
+    expect(order!.payment_status).toBe("paid");
+    // Stored AI text is reused on retry: no new AI calls.
+    const aiCallsBefore = ai.calls.length;
+
+    stubPdf();
+    const result = await retryReportGeneration(db, orderId, "test-retry");
+    expect(result.ok).toBe(true);
+    await runGenerationLocally(orderId);
+    const done = await state(orderId);
+    expect(done.generation_status).toBe("ready");
+    expect(ai.calls.length).toBe(aiCallsBefore);
+    expect(await db.query("select status from payments where order_id = $1::uuid", [orderId])).toEqual(paymentsBefore);
+    expect(await db.query("select order_id from report_jobs where order_id = $1::uuid", [orderId])).toHaveLength(1);
+    // Nothing to retry once it is ready, and an unpaid order can never be generated.
+    expect(await retryReportGeneration(db, orderId, "again")).toEqual({ ok: false, reason: "already_ready" });
   });
 
   it("recovers when dispatch was interrupted after the payment commit", async () => {
