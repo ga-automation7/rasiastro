@@ -69,6 +69,14 @@ try {
 } catch (error) {
   // Hide anything that looks like a connection string, just in case a driver echoes one.
   const message = String((error as Error).message).replace(/[a-z][a-z0-9+.-]*:\/\/\S+/gi, "[address hidden]");
-  console.error(`[deploy] FAILED: ${message}`);
-  process.exit(1);
+  if (!process.env.APP_MODE?.trim()) {
+    // Without APP_MODE a hosted site never takes orders (see readiness.ts), so the pages
+    // can safely go live while the database is being set up. Once APP_MODE is set, a
+    // database problem stops the deployment instead.
+    console.warn(`[deploy] WARNING: database preparation did not complete: ${message}`);
+    console.warn("[deploy] Continuing because APP_MODE is not set, so ordering stays closed.");
+  } else {
+    console.error(`[deploy] FAILED: ${message}`);
+    process.exit(1);
+  }
 }
