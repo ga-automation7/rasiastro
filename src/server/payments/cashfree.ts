@@ -6,6 +6,7 @@ import {
   type CheckoutSession,
   type CreateCheckoutRequest,
   type EvidenceStatus,
+  type PaymentAttemptRef,
   type PaymentEvidence,
   type PaymentProvider,
 } from "./types";
@@ -16,7 +17,8 @@ import {
  *       https://www.cashfree.com/docs/payments/online/webhooks/signature-verification
  */
 export interface CashfreeConfig {
-  environment: "sandbox" | "production";
+  /** test = Cashfree's sandbox; production = real money. */
+  environment: "test" | "production";
   clientId: string;
   clientSecret: string;
   apiVersion: string;
@@ -24,7 +26,7 @@ export interface CashfreeConfig {
 }
 
 const BASE_URLS = {
-  sandbox: "https://sandbox.cashfree.com/pg",
+  test: "https://sandbox.cashfree.com/pg",
   production: "https://api.cashfree.com/pg",
 } as const;
 
@@ -75,11 +77,16 @@ export function mapCashfreePaymentStatus(status: string): EvidenceStatus {
 
 export class CashfreeProvider implements PaymentProvider {
   readonly id = "cashfree" as const;
+  // A Cashfree order stays payable after a failed attempt until it expires.
+  readonly retryOnSameOrder = true;
+  readonly checkoutLifetimeMinutes = 45;
+  readonly environment: "test" | "production";
   private readonly config: CashfreeConfig;
   private readonly fetchImpl: typeof fetch;
 
   constructor(config: CashfreeConfig) {
     this.config = config;
+    this.environment = config.environment;
     this.fetchImpl = config.fetchImpl ?? fetch;
   }
 
@@ -128,20 +135,37 @@ export class CashfreeProvider implements PaymentProvider {
         return_url: req.returnUrl,
         ...(req.notifyUrl ? { notify_url: req.notifyUrl } : {}),
       },
-      order_expiry_time: req.expiresAt.toISOString(),
+      order_expiry_time: (req.expiresAt ?? new Date(Date.now() + this.checkoutLifetimeMinutes * 60_000)).toISOString(),
       order_note: req.orderNote,
     };
-    const order = await this.request<CashfreeOrder>("POST", "/orders", body);
-    if (!order.payment_session_id) throw new PaymentProviderError("Cashfree did not return a payment session", null, null, true);
-    if (rupeeAmountToPaise(order.order_amount) !== req.amountPaise || order.order_currency !== req.currency) {
-      throw new PaymentProviderError("Cashfree order amount mismatch", null, null, false);
+    let order: CashfreeOrder;
+    try {
+      order = await this.request<CashfreeOrder>("POST", "/orders", body);
+    } catch (error) {
+      // 409: this order id already exists, typically because an earlier create timed out
+      // after Cashfree accepted it. Use that order rather than opening a second one.
+      if (!(error instanceof PaymentProviderError) || error.httpStatus !== 409) throw error;
+      order = await this.request<CashfreeOrder>("GET", `/orders/${encodeURIComponent(req.providerOrderId)}`);
     }
-    return { paymentSessionId: order.payment_session_id, redirectUrl: null, environment: this.config.environment };
+    if (order.order_id !== req.providerOrderId) throw new PaymentProviderError("Cashfree returned a different order", null, "reference_mismatch", false);
+    if (rupeeAmountToPaise(order.order_amount) !== req.amountPaise || order.order_currency !== req.currency) {
+      throw new PaymentProviderError("Cashfree order amount mismatch", null, "amount_mismatch", false);
+    }
+    const reference = order.cf_order_id !== undefined ? String(order.cf_order_id) : null;
+    if (order.order_status !== "ACTIVE") return { paymentSessionId: null, redirectUrl: null, providerReference: reference, environment: this.environment };
+    if (!order.payment_session_id) throw new PaymentProviderError("Cashfree did not return a payment session", null, null, true);
+    return { paymentSessionId: order.payment_session_id, redirectUrl: null, providerReference: reference, environment: this.environment };
   }
 
-  async fetchEvidence(providerOrderId: string): Promise<PaymentEvidence> {
-    const encoded = encodeURIComponent(providerOrderId);
+  /** Checks a webhook signature with the secret of this adapter's environment. */
+  verifyWebhook(rawBody: string, timestamp: string | null, signature: string | null): boolean {
+    return verifyCashfreeSignature(rawBody, timestamp, signature, this.config.clientSecret);
+  }
+
+  async fetchEvidence(attempt: PaymentAttemptRef): Promise<PaymentEvidence> {
+    const encoded = encodeURIComponent(attempt.providerOrderId);
     const order = await this.request<CashfreeOrder>("GET", `/orders/${encoded}`);
+    if (order.order_id !== attempt.providerOrderId) throw new PaymentProviderError("Cashfree order does not belong to this attempt", null, "reference_mismatch", false);
     const payments = await this.request<CashfreePayment[]>("GET", `/orders/${encoded}/payments`);
     const successful = payments.find((p) => p.payment_status === "SUCCESS");
     const latest = [...payments].sort((a, b) => String(b.payment_time ?? "").localeCompare(String(a.payment_time ?? "")))[0];
@@ -155,7 +179,9 @@ export class CashfreeProvider implements PaymentProvider {
     return {
       source: "api",
       provider: "cashfree",
+      environment: this.environment,
       providerOrderId: order.order_id,
+      providerReference: order.cf_order_id !== undefined ? String(order.cf_order_id) : null,
       providerPaymentId: successful ? String(successful.cf_payment_id) : latest ? String(latest.cf_payment_id) : null,
       status,
       amountPaise: reconciledAmount(order, successful),
@@ -199,7 +225,7 @@ interface WebhookBody {
   };
 }
 
-export function parseCashfreeWebhook(rawBody: string, idempotencyKey: string | null): ParsedCashfreeWebhook {
+export function parseCashfreeWebhook(rawBody: string, idempotencyKey: string | null, environment: "test" | "production"): ParsedCashfreeWebhook {
   const body = JSON.parse(rawBody) as WebhookBody;
   const type = body.type ?? "UNKNOWN";
   const order = body.data?.order;
@@ -215,7 +241,10 @@ export function parseCashfreeWebhook(rawBody: string, idempotencyKey: string | n
     evidence = {
       source: "webhook",
       provider: "cashfree",
+      // The signature was checked with this environment's secret.
+      environment,
       providerOrderId: order.order_id,
+      providerReference: null,
       providerPaymentId: paymentId,
       status,
       // For a success both amounts must agree; a mismatch is surfaced for review.

@@ -1,6 +1,6 @@
 /**
  * Checks your configuration and (read-only) tests each configured account:
- * database, Cashfree credentials, OpenAI key + model access, Resend key + domain,
+ * database, payment provider credentials (UroPay Merchant API, Cashfree), OpenAI key + model access, Resend key + domain,
  * Supabase storage bucket, Inngest keys and the PDF browser. Prints no secrets.
  *
  *   npm run config:check
@@ -12,6 +12,9 @@ import { getEnv } from "../src/server/config/env";
 import { chooseProviders, getCheckoutAvailability, getConfigChecks, getProductChecks, getSiteState } from "../src/server/config/readiness";
 import { closeDb, getDb } from "../src/server/db";
 import { getSchemaVersion } from "../src/server/db/migrate";
+import { configuredProviders, deploymentPaymentEnvironment } from "../src/server/payments/config";
+import { providerFor } from "../src/server/payments/registry";
+import { PaymentProviderError } from "../src/server/payments/types";
 import { getPlacesAvailability } from "../src/server/places/service";
 import { findLocalBrowser, resolveBrowserSource } from "../src/server/reports/pdf";
 
@@ -41,15 +44,31 @@ try {
     bad(`cannot connect: ${(error as Error).message}`);
   }
 
-  if (env.CASHFREE_CLIENT_ID && env.CASHFREE_CLIENT_SECRET) {
-    console.log(`\nCashfree (${env.CASHFREE_ENV}):`);
-    const base = env.CASHFREE_ENV === "production" ? "https://api.cashfree.com/pg" : "https://sandbox.cashfree.com/pg";
-    const res = await fetch(`${base}/orders/rasi-config-check-does-not-exist`, {
-      headers: { "x-api-version": env.CASHFREE_API_VERSION, "x-client-id": env.CASHFREE_CLIENT_ID, "x-client-secret": env.CASHFREE_CLIENT_SECRET },
-    });
-    if (res.status === 404) ok("credentials accepted (test lookup returned 'order not found', as expected)");
-    else if (res.status === 401 || res.status === 403) bad("credentials rejected - check CASHFREE_CLIENT_ID / CASHFREE_CLIENT_SECRET and CASHFREE_ENV");
-    else info(`unexpected response ${res.status}`);
+  const paymentEnv = deploymentPaymentEnvironment(env);
+  console.log(`
+Payments (environment: ${paymentEnv ?? "PAYMENT_ENV not set"}, new checkouts: ${providers.payments}):`);
+  for (const legacy of ["CASHFREE_ENV", "CASHFREE_CLIENT_ID", "CASHFREE_CLIENT_SECRET"]) {
+    if (process.env[legacy]) bad(`${legacy} is no longer used: use PAYMENT_ENV and CASHFREE_TEST_… / CASHFREE_LIVE_… instead`);
+  }
+  if (paymentEnv === "test" || paymentEnv === "production") {
+    const configured = configuredProviders(env);
+    if (!configured.length) info("no payment provider keys for this environment");
+    for (const id of configured) {
+      const provider = providerFor(id, paymentEnv)!;
+      // A read-only lookup of an order that cannot exist: "not found" proves the keys (and signing) work.
+      try {
+        await provider.fetchEvidence({ providerOrderId: "RASI-CONFIG-CHECK", providerReference: "RASI-CONFIG-CHECK" });
+        info(`${id}: unexpected answer to the test lookup`);
+      } catch (error) {
+        const status = error instanceof PaymentProviderError ? error.httpStatus : null;
+        if (status === 404) ok(`${id} (${paymentEnv}): credentials accepted (test lookup returned "order not found", as expected)`);
+        else if (status === 401) bad(`${id} (${paymentEnv}): credentials rejected - check the ${paymentEnv === "production" ? "LIVE" : "TEST"} keys`);
+        else if (status === 403) bad(`${id} (${paymentEnv}): access refused (403). For UroPay PRODUCTION this means KYC is not approved yet.`);
+        else info(`${id} (${paymentEnv}): unexpected response ${status ?? (error as Error).message}`);
+      }
+      const site = env.PUBLIC_SITE_URL.replace(/\/$/, "");
+      info(`${id} webhook URL: ${site}/api/webhooks/${id}${site.startsWith("https://") ? "" : " (providers need HTTPS: not usable from this address)"}`);
+    }
   }
 
   if (env.OPENAI_API_KEY) {

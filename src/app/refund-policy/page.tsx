@@ -69,7 +69,7 @@ export default function RefundPolicyPage() {
         <li>We acknowledge your request within 48 hours and tell you our decision as soon as we have reviewed it.</li>
         <li>Once a refund is approved, we initiate it within {b.refundDays} working days, to the original payment method.</li>
         <li>
-          After we initiate it, Cashfree Payments and your bank or card issuer credit the amount. How long that takes depends on your payment method and bank and is outside our control; if it has not
+          After we initiate it, our payment partner ({b.paymentPartners}) and your bank or card issuer credit the amount. How long that takes depends on your payment method and bank and is outside our control; if it has not
           arrived after a reasonable time, contact us with the reference we send you and we will follow it up.
         </li>
       </ul>

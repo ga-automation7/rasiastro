@@ -4,7 +4,8 @@ import { getDb } from "@/server/db";
 import { AppError, orderNotAccessible } from "@/server/errors";
 import { assertSameOrigin, json, readJson, requireOrderAccess, withErrors } from "@/server/http";
 import { getPaymentByProviderOrderId } from "@/server/payments/repository";
-import { applyPaymentEvidence, getPaymentProvider } from "@/server/payments/service";
+import { providerFor } from "@/server/payments/registry";
+import { applyPaymentEvidence } from "@/server/payments/service";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,9 @@ export const POST = withErrors("demo.payment", async (request: Request, context:
   const providerStatus = body.outcome === "success" ? "DEMO_SUCCESS" : body.outcome === "failure" ? "DEMO_FAILED" : "DEMO_CANCELLED";
   await db.query(`update payments set provider_status = $2, updated_at = now() where id = $1::uuid and status not in ('paid', 'needs_review')`, [payment.id, providerStatus]);
   // Read the "provider" state back exactly as reconciliation would.
-  const evidence = await getPaymentProvider().fetchEvidence(payment.providerOrderId);
+  const provider = providerFor("demo", "demo");
+  if (!provider) throw new AppError("not_found", "Not found");
+  const evidence = await provider.fetchEvidence({ providerOrderId: payment.providerOrderId, providerReference: null });
   const result = await applyPaymentEvidence(evidence);
   return json({ orderId: payment.orderId, outcome: result.outcome });
 });

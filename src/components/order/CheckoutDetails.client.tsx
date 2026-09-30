@@ -49,7 +49,7 @@ export function CheckoutDetails({
             aria-describedby={describedBy(emailId, true, errors.email)}
           />
         </FieldShell>
-        <FieldShell label="Mobile number (for payment)" htmlFor={phoneId} error={errors.phone} hint="Our payment partner, Cashfree Payments, requires it. We don't call, message or market to it.">
+        <FieldShell label="Mobile number (for payment)" htmlFor={phoneId} error={errors.phone} hint="Our payment partner uses it for your payment. We don't call, message or market to it.">
           <input
             id={phoneId}
             className="input"

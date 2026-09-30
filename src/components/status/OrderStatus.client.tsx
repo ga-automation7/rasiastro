@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { goToCheckout, type CheckoutStart } from "@/components/order/checkout";
 import type { OrderStatusView, StageState } from "@/domain/order-status";
 
 /**
@@ -56,19 +57,24 @@ export function OrderStatus({ initial, paymentReturned, startFailed, typicalMinu
     setBusy(true);
     setMessage(null);
     const res = await fetch(`/api/orders/${view.orderId}/checkout`, { method: "POST", headers: { "content-type": "application/json" } });
-    const body = (await res.json().catch(() => ({}))) as { provider?: string; paymentSessionId?: string | null; redirectUrl?: string | null; environment?: string; error?: { message: string } };
-    if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as Partial<CheckoutStart> & { error?: { message: string } };
+    if (!res.ok || !body.provider) {
       setBusy(false);
       setMessage(body.error?.message ?? "Could not open the payment page. Please try again.");
+      // The server may have found the payment while checking; show the latest state.
+      void refresh(false);
       return;
     }
-    if (body.provider === "cashfree" && body.paymentSessionId) {
-      const { load } = await import("@cashfreepayments/cashfree-js");
-      const cashfree = await load({ mode: body.environment === "production" ? "production" : "sandbox" });
-      await cashfree?.checkout({ paymentSessionId: body.paymentSessionId, redirectTarget: "_self" });
-      return;
+    const started = await goToCheckout(body as CheckoutStart, (href) => {
+      if (href.startsWith(`/orders/${view.orderId}`)) {
+        setBusy(false);
+        void refresh(true);
+      } else router.push(href);
+    });
+    if (!started) {
+      setBusy(false);
+      setMessage("Could not open the payment page. Please try again.");
     }
-    if (body.redirectUrl) router.push(body.redirectUrl);
   };
 
   const p = view.paymentStatus;

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { POLICY_LINKS } from "@/config/site";
 import { getEnv } from "@/server/config/env";
+import { PROVIDER_NAMES, paymentPartnerIds } from "@/server/payments/config";
 
 /**
  * Shared pieces for the five policy pages. Every operational fact (operator details,
@@ -31,6 +32,10 @@ export function businessDetails() {
     typicalMinutes: env.DELIVERY_TYPICAL_MINUTES,
     maxHours: env.DELIVERY_MAX_HOURS,
     refundDays: env.REFUND_INITIATION_WORKING_DAYS,
+    /** Payment providers in use (new checkouts first). */
+    paymentPartnerIds: paymentPartnerIds(env),
+    /** e.g. "UroPay" or "UroPay and Cashfree Payments". */
+    paymentPartners: paymentPartnerIds(env).map((id) => PROVIDER_NAMES[id]).join(" and "),
   };
 }
 

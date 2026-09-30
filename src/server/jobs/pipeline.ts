@@ -447,7 +447,7 @@ export async function markGenerationFailed(orderId: string, error: unknown): Pro
   log.error("report generation failed permanently", { orderId, code, product: order?.product });
   await alertOwner(
     "Report generation failed",
-    `Order ${order?.reference ?? orderId} (${order?.product ?? "unknown product"}) could not be generated (${code}). The customer has been shown a support path. Fix the cause, then run: npm run ops:retry-report -- ${order?.reference ?? orderId}`,
+    `Order ${order?.reference ?? orderId} (${order?.product ?? "unknown product"}) could not be generated (${code}). The customer has been shown a support path and will not be charged again. Fix the cause, then press "Retry report generation" on the order in /admin (or run: npm run ops:retry-report -- ${order?.reference ?? orderId})`,
   );
 }
 

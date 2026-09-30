@@ -44,9 +44,30 @@ const EnvSchema = z.object({
   DATABASE_URL: optionalString,
   LOCAL_DB_DIR: z.string().default(".data/pglite"),
 
-  CASHFREE_ENV: z.enum(["sandbox", "production"]).default("sandbox"),
-  CASHFREE_CLIENT_ID: optionalString,
-  CASHFREE_CLIENT_SECRET: optionalString,
+  /**
+   * The provider used for NEW checkouts in sandbox and live mode. Existing payment
+   * attempts always stay with the provider (and environment) that created them.
+   * Demo mode ignores this and simulates payments.
+   */
+  PAYMENT_PROVIDER: z.enum(["uropay", "cashfree"]).optional().or(z.literal("").transform(() => undefined)),
+  /** test = the provider's test environment (APP_MODE=sandbox); production = real money (APP_MODE=live). */
+  PAYMENT_ENV: z.enum(["test", "production"]).optional().or(z.literal("").transform(() => undefined)),
+
+  /**
+   * Which UroPay product the account uses. They have different APIs and credentials:
+   * merchant_api = UroPay Merchant API (api.uropai.in), implemented here.
+   * urorelay = UroRelay (api.uropay.me, Android companion app), NOT implemented.
+   */
+  UROPAY_PRODUCT: z.enum(["merchant_api", "urorelay"]).optional().or(z.literal("").transform(() => undefined)),
+  UROPAY_TEST_API_KEY: optionalString,
+  UROPAY_TEST_API_SECRET: optionalString,
+  UROPAY_LIVE_API_KEY: optionalString,
+  UROPAY_LIVE_API_SECRET: optionalString,
+
+  CASHFREE_TEST_CLIENT_ID: optionalString,
+  CASHFREE_TEST_CLIENT_SECRET: optionalString,
+  CASHFREE_LIVE_CLIENT_ID: optionalString,
+  CASHFREE_LIVE_CLIENT_SECRET: optionalString,
   CASHFREE_API_VERSION: z.string().default("2026-01-01"),
 
   OPENAI_API_KEY: optionalString,
@@ -90,6 +111,13 @@ const EnvSchema = z.object({
   RETENTION_REPORT_DAYS: intFromEnv(400, 30, 3650),
 
   HEALTH_CHECK_TOKEN: optionalString,
+  /**
+   * Email addresses allowed to sign in to the owner dashboard (/admin), comma
+   * separated. Empty = the dashboard is switched off entirely.
+   */
+  ADMIN_EMAILS: optionalString,
+  /** How long an admin sign-in lasts (hours). */
+  ADMIN_SESSION_HOURS: intFromEnv(12, 1, 72),
 
   /** Demo mode only: use the real OpenAI adapter / real Resend emails instead of the demo ones. */
   DEMO_USE_REAL_AI: z.enum(["true", "false"]).default("false"),

@@ -1,4 +1,4 @@
-import type { CheckoutSession, CreateCheckoutRequest, PaymentEvidence, PaymentProvider } from "./types";
+import type { CheckoutSession, CreateCheckoutRequest, PaymentAttemptRef, PaymentEvidence, PaymentProvider } from "./types";
 
 /**
  * DEMO ONLY. Simulates a hosted checkout on our own /demo/checkout page. No money
@@ -10,6 +10,9 @@ import type { CheckoutSession, CreateCheckoutRequest, PaymentEvidence, PaymentPr
  */
 export class DemoPaymentProvider implements PaymentProvider {
   readonly id = "demo" as const;
+  readonly environment = "demo" as const;
+  readonly retryOnSameOrder = false;
+  readonly checkoutLifetimeMinutes = 45;
   private readonly lookup: (providerOrderId: string) => Promise<{ amountPaise: number; providerStatus: string | null } | null>;
 
   constructor(lookup: (providerOrderId: string) => Promise<{ amountPaise: number; providerStatus: string | null } | null>) {
@@ -17,10 +20,11 @@ export class DemoPaymentProvider implements PaymentProvider {
   }
 
   async createCheckout(req: CreateCheckoutRequest): Promise<CheckoutSession> {
-    return { paymentSessionId: null, redirectUrl: `/demo/checkout/${encodeURIComponent(req.providerOrderId)}`, environment: "demo" };
+    return { paymentSessionId: null, redirectUrl: `/demo/checkout/${encodeURIComponent(req.providerOrderId)}`, providerReference: null, environment: "demo" };
   }
 
-  async fetchEvidence(providerOrderId: string): Promise<PaymentEvidence> {
+  async fetchEvidence(attempt: PaymentAttemptRef): Promise<PaymentEvidence> {
+    const { providerOrderId } = attempt;
     const state = await this.lookup(providerOrderId);
     const providerStatus = state?.providerStatus ?? "DEMO_NOT_ATTEMPTED";
     const status =
@@ -28,7 +32,9 @@ export class DemoPaymentProvider implements PaymentProvider {
     return {
       source: "demo",
       provider: "demo",
+      environment: "demo",
       providerOrderId,
+      providerReference: null,
       providerPaymentId: status === "paid" ? `demo_${providerOrderId}` : null,
       status,
       amountPaise: state?.amountPaise ?? null,

@@ -26,6 +26,10 @@ export const RATE_LIMITS = {
   recoveryPerIp: { name: "recovery_ip", limit: 5, windowSeconds: 3600 },
   recoveryPerEmail: { name: "recovery_email", limit: 3, windowSeconds: 3600 },
   funnelEvent: { name: "funnel_event", limit: 30, windowSeconds: 600 },
+  // Owner dashboard sign-in: few codes, few guesses.
+  adminCodeIp: { name: "admin_code_ip", limit: 5, windowSeconds: 900 },
+  adminCodeEmail: { name: "admin_code_email", limit: 5, windowSeconds: 3600 },
+  adminVerifyIp: { name: "admin_verify_ip", limit: 10, windowSeconds: 900 },
 } satisfies Record<string, RateLimitRule>;
 
 /** Returns true when the action is allowed (and counts it). */

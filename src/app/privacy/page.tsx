@@ -45,7 +45,7 @@ export default function PrivacyPage() {
             <td>Our payment partner requires it to process the payment. We do not call, message or market to it.</td>
           </tr>
           <tr>
-            <td>Payment references and status from Cashfree Payments</td>
+            <td>Payment references and status from our payment partner ({b.paymentPartners})</td>
             <td>To confirm payment, prevent fraud, handle refunds and keep financial records. We never receive your card, UPI or bank credentials.</td>
           </tr>
           <tr>
@@ -72,7 +72,12 @@ export default function PrivacyPage() {
       <ul>
         <li>Supabase: database and private report file storage.</li>
         <li>Vercel: website hosting and short-lived technical logs.</li>
-        <li>Cashfree Payments: payment processing (India).</li>
+        {b.paymentPartnerIds.includes("uropay") ? (
+          <li>
+            UroPay: payment orders and its secure payment page (India). UroPay passes each payment to one of its partner payment gateways, which process it under their own policies.
+          </li>
+        ) : null}
+        {b.paymentPartnerIds.includes("cashfree") ? <li>Cashfree Payments: payment processing (India).</li> : null}
         <li>OpenAI: writing the interpretation from the data described above. We ask it not to store responses; its API terms allow it to keep requests for a limited period to detect abuse.</li>
         <li>Resend: sending your report and recovery emails (your email address and the private link).</li>
         <li>Inngest: running background report jobs. It receives only order identifiers, not birth details.</li>
@@ -99,7 +104,7 @@ export default function PrivacyPage() {
       <h2>Cookies and tracking</h2>
       <p>
         We set one essential, secure cookie for each order you open, so that your browser can show that order after you used its private link. It expires with the link. We use no analytics,
-        advertising or social-media trackers. Cashfree&apos;s payment page is operated by Cashfree under its own policies.
+        advertising or social-media trackers. The payment page is operated by our payment partner ({b.paymentPartners}) under its own policies.
       </p>
 
       <h2>Information about another person</h2>

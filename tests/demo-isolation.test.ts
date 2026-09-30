@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { chooseProviders, getCheckoutAvailability, getSiteState } from "@/server/config/readiness";
 import { getEnv } from "@/server/config/env";
 import { getInterpretationProvider } from "@/server/interpretation/service";
-import { getPaymentProvider } from "@/server/payments/service";
+import { activeProvider, providerFor } from "@/server/payments/registry";
 import { setTestEnv } from "./helpers";
 
 const LIVE_OK = {
@@ -11,8 +11,9 @@ const LIVE_OK = {
   PUBLIC_SITE_URL: "https://staging.rasiastro.example",
   APP_SECRET: "x".repeat(40),
   DATABASE_URL: "postgres://u:p@localhost:5432/db",
-  CASHFREE_CLIENT_ID: "id",
-  CASHFREE_CLIENT_SECRET: "secret",
+  PAYMENT_PROVIDER: "cashfree",
+  CASHFREE_LIVE_CLIENT_ID: "id",
+  CASHFREE_LIVE_CLIENT_SECRET: "secret",
   OPENAI_API_KEY: "sk-test",
   OPENAI_MODEL: "some-model",
   RESEND_API_KEY: "re_test",
@@ -26,10 +27,19 @@ const LIVE_OK = {
   BUSINESS_ADDRESS: "Chennai",
   GRIEVANCE_OFFICER_NAME: "A. Person",
   SUPPORT_PHONE: "+91 90000 00000",
-  CASHFREE_ENV: "production",
+  PAYMENT_ENV: "production",
 };
 
-const SANDBOX_OK = { ...LIVE_OK, APP_MODE: "sandbox", CASHFREE_ENV: "sandbox", PUBLIC_SITE_URL: "https://rasi-astro.vercel.app" };
+const SANDBOX_OK = {
+  ...LIVE_OK,
+  APP_MODE: "sandbox",
+  PAYMENT_ENV: "test",
+  CASHFREE_LIVE_CLIENT_ID: undefined,
+  CASHFREE_LIVE_CLIENT_SECRET: undefined,
+  CASHFREE_TEST_CLIENT_ID: "test-id",
+  CASHFREE_TEST_CLIENT_SECRET: "test-secret",
+  PUBLIC_SITE_URL: "https://rasi-astro.vercel.app",
+};
 
 describe("demo mode can never take real money", () => {
   afterEach(() => setTestEnv());
@@ -37,7 +47,11 @@ describe("demo mode can never take real money", () => {
   it("demo mode uses demo payment and demo AI adapters", () => {
     setTestEnv();
     expect(chooseProviders()).toMatchObject({ payments: "demo", interpretation: "demo", email: "demo-file" });
-    expect(getPaymentProvider().id).toBe("demo");
+    expect(activeProvider().id).toBe("demo");
+    // Real providers are never constructed in demo mode, whatever keys are present.
+    setTestEnv({ CASHFREE_TEST_CLIENT_ID: "id", CASHFREE_TEST_CLIENT_SECRET: "s", PAYMENT_PROVIDER: "cashfree", PAYMENT_ENV: "test" });
+    expect(activeProvider().id).toBe("demo");
+    expect(providerFor("cashfree", "test")).toBeNull();
     expect(getInterpretationProvider().isDemo).toBe(true);
   });
 
@@ -54,13 +68,14 @@ describe("demo mode can never take real money", () => {
   it("live mode never selects a demo adapter", () => {
     setTestEnv(LIVE_OK);
     expect(chooseProviders()).toMatchObject({ payments: "cashfree", interpretation: "openai", email: "resend", jobs: "inngest", storage: "supabase" });
-    expect(getPaymentProvider().id).toBe("cashfree");
+    expect(activeProvider()).toMatchObject({ id: "cashfree", environment: "production" });
+    expect(providerFor("demo", "demo")).toBeNull();
     expect(getInterpretationProvider().isDemo).toBe(false);
     expect(getCheckoutAvailability()).toMatchObject({ available: true });
   });
 
   it("live mode with any missing integration disables checkout with a customer-safe message", () => {
-    for (const key of ["CASHFREE_CLIENT_SECRET", "OPENAI_MODEL", "RESEND_API_KEY", "SUPABASE_SERVICE_ROLE_KEY", "INNGEST_SIGNING_KEY", "DATABASE_URL", "BUSINESS_LEGAL_NAME"]) {
+    for (const key of ["CASHFREE_LIVE_CLIENT_SECRET", "PAYMENT_PROVIDER", "PAYMENT_ENV", "OPENAI_MODEL", "RESEND_API_KEY", "SUPABASE_SERVICE_ROLE_KEY", "INNGEST_SIGNING_KEY", "DATABASE_URL", "BUSINESS_LEGAL_NAME"]) {
       setTestEnv({ ...LIVE_OK, [key]: undefined });
       const availability = getCheckoutAvailability();
       expect(availability.available, key).toBe(false);
@@ -76,16 +91,62 @@ describe("demo mode can never take real money", () => {
     expect(getCheckoutAvailability().available).toBe(false);
   });
 
-  it("live mode must use the Cashfree production environment; sandbox must use the test environment", () => {
-    setTestEnv({ ...LIVE_OK, CASHFREE_ENV: "sandbox" });
+  it("live mode must use the production payment environment; sandbox must use the test environment", () => {
+    setTestEnv({ ...LIVE_OK, PAYMENT_ENV: "test" });
     expect(getCheckoutAvailability().available).toBe(false);
-    setTestEnv({ ...LIVE_OK, CASHFREE_ENV: "production" });
+    setTestEnv({ ...LIVE_OK, PAYMENT_ENV: "production" });
     expect(getCheckoutAvailability().available).toBe(true);
-    expect(getEnv().CASHFREE_ENV).toBe("production");
+    expect(getEnv().PAYMENT_ENV).toBe("production");
     setTestEnv(SANDBOX_OK);
     expect(getCheckoutAvailability().available).toBe(true);
-    setTestEnv({ ...SANDBOX_OK, CASHFREE_ENV: "production" });
+    setTestEnv({ ...SANDBOX_OK, PAYMENT_ENV: "production" });
     expect(getCheckoutAvailability().available).toBe(false);
+  });
+
+  it("a deployment only reads the keys of its own environment", () => {
+    // Live keys present on a sandbox deployment are never used: no silent live payments.
+    setTestEnv({ ...SANDBOX_OK, CASHFREE_TEST_CLIENT_ID: undefined, CASHFREE_TEST_CLIENT_SECRET: undefined, CASHFREE_LIVE_CLIENT_ID: "live", CASHFREE_LIVE_CLIENT_SECRET: "live" });
+    expect(getCheckoutAvailability().available).toBe(false);
+    expect(providerFor("cashfree", "production")).toBeNull();
+    expect(() => activeProvider()).toThrow(/not configured/);
+    // Test keys on a live deployment are never used either.
+    setTestEnv({ ...LIVE_OK, CASHFREE_LIVE_CLIENT_ID: undefined, CASHFREE_LIVE_CLIENT_SECRET: undefined, CASHFREE_TEST_CLIENT_ID: "t", CASHFREE_TEST_CLIENT_SECRET: "t" });
+    expect(getCheckoutAvailability().available).toBe(false);
+    expect(providerFor("cashfree", "test")).toBeNull();
+  });
+
+  it("Vercel Preview and Development deployments can never take live payments", () => {
+    setTestEnv({ ...LIVE_OK, VERCEL_ENV: "preview" });
+    const preview = getCheckoutAvailability();
+    expect(preview.available).toBe(false);
+    expect(preview.missing.join(" ")).toMatch(/Live payments are refused on a Vercel preview deployment/);
+    setTestEnv({ ...LIVE_OK, VERCEL_ENV: "development" });
+    expect(getCheckoutAvailability().available).toBe(false);
+    setTestEnv({ ...LIVE_OK, VERCEL_ENV: "production" });
+    expect(getCheckoutAvailability().available).toBe(true);
+    // Sandbox (test payments) is fine on Preview.
+    setTestEnv({ ...SANDBOX_OK, VERCEL_ENV: "preview" });
+    expect(getCheckoutAvailability().available).toBe(true);
+  });
+
+  it("UroPay needs the Merchant API product and keys for this environment; UroRelay is refused", () => {
+    const uropay = { ...LIVE_OK, PAYMENT_PROVIDER: "uropay", UROPAY_PRODUCT: "merchant_api", UROPAY_LIVE_API_KEY: "k", UROPAY_LIVE_API_SECRET: "s" };
+    setTestEnv(uropay);
+    expect(getCheckoutAvailability().available).toBe(true);
+    expect(activeProvider()).toMatchObject({ id: "uropay", environment: "production" });
+    setTestEnv({ ...uropay, UROPAY_PRODUCT: undefined });
+    expect(getCheckoutAvailability().missing.join(" ")).toMatch(/UROPAY_PRODUCT=merchant_api/);
+    setTestEnv({ ...uropay, UROPAY_PRODUCT: "urorelay" });
+    expect(getCheckoutAvailability().missing.join(" ")).toMatch(/urorelay is not supported/);
+    expect(providerFor("uropay", "production")).toBeNull();
+    setTestEnv({ ...uropay, UROPAY_LIVE_API_SECRET: undefined });
+    expect(getCheckoutAvailability().available).toBe(false);
+  });
+
+  it("the provider that is not active stays available for its existing attempts", () => {
+    setTestEnv({ ...LIVE_OK, PAYMENT_PROVIDER: "cashfree", UROPAY_PRODUCT: "merchant_api", UROPAY_LIVE_API_KEY: "k", UROPAY_LIVE_API_SECRET: "s" });
+    expect(activeProvider().id).toBe("cashfree");
+    expect(providerFor("uropay", "production")?.id).toBe("uropay");
   });
 
   it("sandbox uses every real adapter but is refused on rasiastro.com", () => {

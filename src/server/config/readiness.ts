@@ -1,4 +1,6 @@
 import type { Product } from "@/domain/pricing";
+import { PROVIDER_NAMES, cashfreeCredentials, uroPayCredentials } from "../payments/config";
+import type { ProviderId } from "../payments/types";
 import { getEnv, isAppModeExplicit, isProductionDeployment, isServerlessRuntime, type Env } from "./env";
 
 /**
@@ -21,7 +23,8 @@ export interface ConfigCheck {
 }
 
 export type ProviderChoice = {
-  payments: "cashfree" | "demo";
+  /** The provider for NEW checkouts ("not_set" = sandbox/live without PAYMENT_PROVIDER). */
+  payments: ProviderId | "not_set";
   interpretation: "openai" | "demo";
   email: "resend" | "demo-file";
   storage: "supabase" | "local";
@@ -32,7 +35,7 @@ export function chooseProviders(env: Env = getEnv()): ProviderChoice {
   // Only demo simulates providers. Sandbox uses every real service with test payments.
   const demo = env.APP_MODE === "demo";
   return {
-    payments: demo ? "demo" : "cashfree",
+    payments: demo ? "demo" : (env.PAYMENT_PROVIDER ?? "not_set"),
     interpretation: demo && env.DEMO_USE_REAL_AI !== "true" ? "demo" : "openai",
     email: demo && env.DEMO_SEND_REAL_EMAIL !== "true" ? "demo-file" : "resend",
     storage: env.STORAGE_PROVIDER,
@@ -74,7 +77,18 @@ export function getConfigChecks(env: Env = getEnv()): ConfigCheck[] {
     if (env.APP_MODE === "sandbox") {
       add("mode", "Sandbox allowed here", !production, production ? "Sandbox (test payments) is refused on the production site (rasiastro.com)." : "Sandbox: real services, test payments.");
     } else {
-      add("mode", "Live mode", true, "Live mode: real providers only.");
+      // Vercel Preview and Development deployments share the project but not the
+      // customer-facing domain: real money must only ever move on the Production deployment,
+      // even if someone copies APP_MODE=live into the Preview environment by mistake.
+      const vercelNonProduction = Boolean(env.VERCEL_ENV) && env.VERCEL_ENV !== "production";
+      add(
+        "mode",
+        "Live mode allowed here",
+        !vercelNonProduction,
+        vercelNonProduction
+          ? `Live payments are refused on a Vercel ${env.VERCEL_ENV} deployment. Use APP_MODE=sandbox for Preview.`
+          : "Live mode: real providers only.",
+      );
     }
     add("database", "Database (Supabase Postgres)", Boolean(env.DATABASE_URL), env.DATABASE_URL ? "DATABASE_URL set." : "Set DATABASE_URL.");
     const httpsRequired = env.APP_MODE === "live" || hosted;
@@ -89,12 +103,30 @@ export function getConfigChecks(env: Env = getEnv()): ConfigCheck[] {
     }
   }
 
-  if (providers.payments === "cashfree") {
-    add("cashfree_keys", "Cashfree API keys", Boolean(env.CASHFREE_CLIENT_ID && env.CASHFREE_CLIENT_SECRET), "Set CASHFREE_CLIENT_ID and CASHFREE_CLIENT_SECRET.");
-    if (env.APP_MODE === "live") {
-      add("cashfree_env", "Cashfree production environment", env.CASHFREE_ENV === "production", "Live mode must use CASHFREE_ENV=production. Use APP_MODE=sandbox for testing.");
-    } else {
-      add("cashfree_env", "Cashfree test environment", env.CASHFREE_ENV === "sandbox", "Sandbox mode must use CASHFREE_ENV=sandbox so no real money moves.");
+  if (env.APP_MODE !== "demo") {
+    // Two independent settings must agree before money can move: APP_MODE and PAYMENT_ENV.
+    const wantedEnv = env.APP_MODE === "live" ? "production" : "test";
+    add(
+      "payment_env",
+      "Payment environment matches the mode",
+      env.PAYMENT_ENV === wantedEnv,
+      env.APP_MODE === "live" ? "Live mode must use PAYMENT_ENV=production. Use APP_MODE=sandbox with PAYMENT_ENV=test for testing." : "Sandbox mode must use PAYMENT_ENV=test so no real money moves.",
+    );
+    add("payment_provider", "Payment provider chosen", Boolean(env.PAYMENT_PROVIDER), "Set PAYMENT_PROVIDER to uropay or cashfree (the provider for new checkouts).");
+    const keys = env.APP_MODE === "live" ? "LIVE" : "TEST";
+    if (env.PAYMENT_PROVIDER === "uropay") {
+      add(
+        "uropay_product",
+        "UroPay product supported",
+        env.UROPAY_PRODUCT === "merchant_api",
+        env.UROPAY_PRODUCT === "urorelay"
+          ? "UROPAY_PRODUCT=urorelay is not supported: this app integrates the UroPay Merchant API only."
+          : "Set UROPAY_PRODUCT=merchant_api once you have confirmed your UroPay account is the Merchant API (dashboard.uropay.me).",
+      );
+      add("uropay_keys", `${PROVIDER_NAMES.uropay} API keys`, uroPayCredentials(env, wantedEnv) !== null, `Set UROPAY_${keys}_API_KEY and UROPAY_${keys}_API_SECRET.`);
+    }
+    if (env.PAYMENT_PROVIDER === "cashfree") {
+      add("cashfree_keys", `${PROVIDER_NAMES.cashfree} API keys`, cashfreeCredentials(env, wantedEnv) !== null, `Set CASHFREE_${keys}_CLIENT_ID and CASHFREE_${keys}_CLIENT_SECRET.`);
     }
   }
   if (providers.interpretation === "openai") {

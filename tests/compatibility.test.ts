@@ -72,7 +72,7 @@ async function payDemo(orderId: string, amountPaise: number) {
   const db = await getDb();
   const [payment] = await db.query<{ provider_order_id: string }>("select provider_order_id from payments where order_id = $1::uuid", [orderId]);
   await db.query("update payments set provider_status = 'DEMO_SUCCESS' where provider_order_id = $1", [payment!.provider_order_id]);
-  await applyPaymentEvidence({ source: "demo", provider: "demo", providerOrderId: payment!.provider_order_id, providerPaymentId: "d", status: "paid", amountPaise, currency: "INR", providerStatus: "DEMO_SUCCESS" });
+  await applyPaymentEvidence({ source: "demo", provider: "demo", environment: "demo", providerReference: null, providerOrderId: payment!.provider_order_id, providerPaymentId: "d", status: "paid", amountPaise, currency: "INR", providerStatus: "DEMO_SUCCESS" });
 }
 
 describe("compatibility input", () => {

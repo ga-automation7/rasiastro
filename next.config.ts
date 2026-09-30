@@ -72,6 +72,8 @@ const nextConfig: NextConfig = {
       { source: "/access", headers: privateHeaders },
       { source: "/recover", headers: privateHeaders.filter((h) => h.key !== "Cache-Control") },
       { source: "/demo/:path*", headers: privateHeaders },
+      { source: "/admin/:path*", headers: privateHeaders },
+      { source: "/admin", headers: privateHeaders },
       { source: "/api/:path*", headers: privateHeaders },
     ];
   },

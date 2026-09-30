@@ -275,7 +275,7 @@ export function OrderWizard({
             </button>
           )}
         </div>
-        {step === 4 ? <p className="mt-3 text-right text-xs text-muted">Payments are handled by Cashfree Payments. We never see your card or UPI details.</p> : null}
+        {step === 4 ? <p className="mt-3 text-right text-xs text-muted">You pay on our payment partner&apos;s secure page. We never see your card or UPI details.</p> : null}
       </form>
     </div>
   );

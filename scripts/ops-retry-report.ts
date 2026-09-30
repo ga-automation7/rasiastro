@@ -8,8 +8,7 @@
  *   npm run ops:retry-report -- RA-XXXXXXXX --regenerate-text --yes   (discard stored AI text and write it again)
  */
 import { fail, findOrderId, flag, positional, withDb } from "./lib/cli";
-import { dispatchDue } from "../src/server/jobs/dispatch";
-import { requeueGeneration } from "../src/server/jobs/job-state";
+import { retryReportGeneration } from "../src/server/jobs/retry";
 
 try {
   await withDb(async (db) => {
@@ -33,15 +32,12 @@ try {
       await db.query("update reports set pdf_storage_key = null where order_id = $1::uuid", [order.id]);
       console.log("The PDF will be rebuilt from the stored report.");
     }
-    await db.query(
-      `update orders set generation_status = 'queued', generation_failure_code = null, updated_at = now() where id = $1::uuid and generation_status <> 'ready'`,
-      [order.id],
-    );
-    if (flag("regenerate-text")) await db.query(`update orders set generation_status = 'queued', delivery_status = 'not_sent' where id = $1::uuid`, [order.id]);
-    await db.query(`update report_jobs set attempts = 0, last_error_code = null, last_error_message = null where order_id = $1::uuid`, [order.id]);
-    await db.query(`insert into report_jobs (order_id) values ($1::uuid) on conflict (order_id) do nothing`, [order.id]);
-    await requeueGeneration(db, order.id, "owner-retry");
-    await dispatchDue({ orderId: order.id, limit: 5 });
+    if (flag("regenerate-text") || flag("rerender-pdf")) {
+      await db.query(`update orders set generation_status = 'queued', delivery_status = case when $2::boolean then 'not_sent' else delivery_status end where id = $1::uuid`, [order.id, flag("regenerate-text")]);
+    }
+    // The same controlled retry as the admin dashboard button (also resumes a stuck job).
+    const result = await retryReportGeneration(db, order.id, "owner-retry", { allowInProgress: true });
+    if (!result.ok) fail(`${order.reference}: not re-queued (${result.reason}).`);
     const [after] = await db.query<{ generation_status: string }>("select generation_status from orders where id = $1::uuid", [order.id]);
     console.log(`${order.reference}: report generation re-queued (current status: ${after!.generation_status}).`);
     console.log("With Inngest, follow progress in the Inngest dashboard or with npm run ops:status.");

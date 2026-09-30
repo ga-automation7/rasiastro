@@ -53,8 +53,8 @@ export default function TermsPage() {
 
       <h2>Payment</h2>
       <p>
-        Payments are processed by Cashfree Payments. An order counts as paid only when we have verified the payment with Cashfree; a browser message or screenshot is not enough. If a payment is
-        pending, we wait for confirmation rather than charging you again.
+        Payments are processed by our payment partner ({b.paymentPartners}). An order counts as paid only when we have verified the payment directly with that partner; a browser message,
+        screenshot or confirmation text is not enough. If a payment is pending, we wait for confirmation rather than asking you to pay again.
       </p>
 
       <h2>Delivery, refunds and cancellation</h2>
