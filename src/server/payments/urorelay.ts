@@ -227,15 +227,17 @@ export class UroRelayProvider implements PaymentProvider {
    * Read-only credential check for deployments: asks UroPay to update an order that
    * cannot exist. "Not found" proves the key and secret are accepted; nothing changes.
    */
-  async checkCredentials(): Promise<"accepted" | "rejected" | "unknown"> {
+  async checkCredentials(): Promise<{ result: "accepted" | "rejected" | "unknown"; detail: string }> {
     try {
       await this.request("PATCH", "/order/update", { uroPayOrderId: "rasi-astro-credential-check", referenceNumber: "000000000000" });
-      return "unknown";
+      return { result: "unknown", detail: "UroPay accepted an update for an order that does not exist" };
     } catch (error) {
       const status = error instanceof PaymentProviderError ? error.httpStatus : null;
-      if (status === 401 || status === 403) return "rejected";
-      if (status === 404 || status === 400) return "accepted";
-      return "unknown";
+      // UroPay's own short message (never contains our key or secret).
+      const detail = `${status === null ? "no answer" : `HTTP ${status}`}${error instanceof PaymentProviderError && error.providerCode ? `: ${error.providerCode}` : ""}`;
+      if (status === 401) return { result: "rejected", detail };
+      if (status === 404 || status === 400) return { result: "accepted", detail };
+      return { result: "unknown", detail };
     }
   }
 

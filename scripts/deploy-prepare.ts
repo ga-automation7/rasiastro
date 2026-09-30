@@ -126,13 +126,13 @@ async function reportConfiguration(): Promise<void> {
   if (relay && (env.PAYMENT_ENV === "test" || env.PAYMENT_ENV === "production")) {
     const { UroRelayProvider } = await import("../src/server/payments/urorelay");
     const provider = new UroRelayProvider({ environment: env.PAYMENT_ENV, ...relay, lookup: async () => null });
-    const result = await provider.checkCredentials();
+    const { result, detail } = await provider.checkCredentials();
     console.log(
       result === "accepted"
-        ? "[deploy]   ok      UroRelay accepted the API key and secret"
+        ? `[deploy]   ok      UroRelay accepted the API key and secret (${detail})`
         : result === "rejected"
-          ? "[deploy]   MISSING UroRelay rejected the API key or secret (check UROPAY_RELAY_API_KEY / UROPAY_RELAY_API_SECRET)"
-          : "[deploy]   UNKNOWN could not confirm the UroRelay key and secret",
+          ? `[deploy]   MISSING UroRelay rejected the API key or secret (${detail}); check UROPAY_RELAY_API_KEY / UROPAY_RELAY_API_SECRET`
+          : `[deploy]   UNKNOWN could not confirm the UroRelay key and secret (${detail})`,
     );
   }
   if (env.APP_MODE === "live" && modelOk === false) {

@@ -261,9 +261,9 @@ describe("UroRelay payments (MOCKED UroRelay API)", () => {
   });
 
   it("the deployment credential check changes nothing and tells a good secret from a bad one", async () => {
-    expect(await relay.provider.checkCredentials()).toBe("accepted");
+    expect((await relay.provider.checkCredentials()).result).toBe("accepted");
     const wrong = new UroRelayProvider({ environment: "test", apiKey: KEY, apiSecret: "wrong", lookup: async () => null, fetchImpl: (relay.provider as unknown as { fetchImpl: typeof fetch }).fetchImpl });
-    expect(await wrong.checkCredentials()).toBe("rejected");
+    expect((await wrong.checkCredentials()).result).toBe("rejected");
     expect(relay.updates).toHaveLength(0);
   });
 
