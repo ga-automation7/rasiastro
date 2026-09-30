@@ -23,15 +23,15 @@ export const CTA = {
 
 export const COPY = {
   meta: {
-    title: "Rasi Astro · Your birth chart, your story in detail",
+    title: "Rasi Astro · The sky at your birth, the story it holds",
     description: `Personal birth-chart reports (${PRICE.personal}) and two-person compatibility reports (${PRICE.compatibility}) in Indian or Western astrology, written in Tamil, English, Hindi, Telugu, Kannada or Malayalam. Calculated charts, AI-written interpretation, PDF included, no account needed.`,
   },
   campaign: ["Centuries of tradition.", "Calculated by machines.", "Interpreted for you."],
   hero: {
-    headline: ["Your birth chart.", "Your story, in detail."],
+    headline: ["The sky at your birth.", "The story it holds."],
     supporting:
-      "Explore your birth chart, the patterns it holds, and the connections that matter—with AI-powered astrology in your language.",
-    reassurance: "One-time payment. PDF included. No account needed.",
+      "Discover who you are, the chapters that may lie ahead, and the people who shape your story. Written for you in Tamil, English, Hindi, Telugu, Kannada or Malayalam.",
+    reassurance: "Pay once. Keep the PDF. No account needed.",
   },
   personal: {
     eyebrow: `Personal report · ${PRICE.personal}`,
