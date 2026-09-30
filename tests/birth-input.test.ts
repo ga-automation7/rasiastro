@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BirthDetailsSchema, TIME_WINDOW_OPTIONS } from "@/domain/order-input";
-import { APPROX_BLOCKS, APPROX_BLOCK_WINDOW, approxBlockPatch, certaintyPatch, dobStatus, firstName, parseDateText, personalBirthErrors, personalTimeLabel, selectedApproxBlock, timeComplete } from "@/components/order/birth-input";
+import { APPROX_BLOCKS, APPROX_BLOCK_WINDOW, approxBlockPatch, certaintyPatch, dobStatus, firstName, parseDateText, personalBirthErrors, personalTimeLabel, readHour, selectedApproxBlock, splitSegment, timeComplete } from "@/components/order/birth-input";
 import { EMPTY_BIRTH, birthInput, time24, type BirthFieldsState } from "@/components/order/person";
 
 // The personal birth step changes only how details are typed in. These tests pin the
@@ -160,5 +160,25 @@ describe("personal step checks", () => {
     expect(timeComplete({ hour12: "6", minute: "", meridiem: "AM" })).toBe(false);
     expect(firstName("  Priya Raman ")).toBe("Priya");
     expect(firstName("A")).toBe("");
+  });
+});
+
+describe("fast typing across the boxes", () => {
+  it("carries digits that cannot belong to the current box", () => {
+    expect(splitSegment("91", 1)).toEqual(["9", "1"]);
+    expect(splitSegment("915", 1)).toEqual(["9", "15"]);
+    expect(splitSegment("12", 1)).toEqual(["12", ""]);
+    expect(splitSegment("123", 3)).toEqual(["12", "3"]);
+    expect(splitSegment("51", 3)).toEqual(["5", "1"]);
+    expect(splitSegment("3", 3)).toEqual(["3", ""]);
+  });
+
+  it("reads hours, including 24 hour habits", () => {
+    expect(readHour("915")).toEqual({ hour12: "9", carry: "15", meridiem: null });
+    expect(readHour("11")).toEqual({ hour12: "11", carry: "", meridiem: null });
+    expect(readHour("1530")).toEqual({ hour12: "3", carry: "30", meridiem: "PM" });
+    expect(readHour("00")).toEqual({ hour12: "12", carry: "", meridiem: "AM" });
+    expect(readHour("2")).toEqual({ hour12: "2", carry: "", meridiem: null });
+    expect(readHour("23")).toEqual({ hour12: "2", carry: "3", meridiem: null });
   });
 });

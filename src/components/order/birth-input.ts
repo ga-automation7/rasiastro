@@ -20,6 +20,32 @@ export function parseDateText(text: string): { day: string; month: string; year:
   return null;
 }
 
+/**
+ * Fast typing can run past a two digit box before focus moves on. A first digit that
+ * can only stand alone (a 5 for the day, a 9 for the hour) keeps the box and the rest
+ * carries into the next box, so "915" reads as 9:15 however quickly it was typed.
+ * Returns [digits for this box, digits for the next box].
+ */
+export function splitSegment(digits: string, maxFirstDigit: number): [string, string] {
+  if (digits.length >= 2 && Number(digits[0]) > maxFirstDigit) return [digits.slice(0, 1), digits.slice(1)];
+  return [digits.slice(0, 2), digits.slice(2)];
+}
+
+/**
+ * Reads the hour box. Besides 1 to 12 it accepts 24 hour habits: 13 to 19 become
+ * 1 PM to 7 PM and 00 becomes 12 AM (20 to 23 cannot be told apart from "2" then the
+ * minutes, so those read as 2 o'clock, the same whether typed quickly or slowly).
+ */
+export function readHour(digits: string): { hour12: string; carry: string; meridiem: "AM" | "PM" | null } {
+  const [hour, carry] = splitSegment(digits, 1);
+  if (hour.length === 2) {
+    const n = Number(hour);
+    if (n >= 13 && n <= 19) return { hour12: String(n - 12), carry, meridiem: "PM" };
+    if (n === 0) return { hour12: "12", carry, meridiem: "AM" };
+  }
+  return { hour12: hour, carry, meridiem: null };
+}
+
 export type DobStatus = "empty" | "incomplete" | "invalid" | "future" | "too_early" | "under_age" | "ok";
 
 export const DOB_MESSAGES: Record<Exclude<DobStatus, "ok" | "empty" | "incomplete">, string> = {

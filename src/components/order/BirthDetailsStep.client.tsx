@@ -12,7 +12,9 @@ import {
   firstName,
   parseDateText,
   personalBirthErrors,
+  readHour,
   selectedApproxBlock,
+  splitSegment,
   timeComplete,
   validHour,
   validMinute,
@@ -50,6 +52,13 @@ function FieldError({ id, message }: { id: string; message: string | null | unde
 }
 
 /* ------------------------------------------------------------ segmented number input */
+
+/** Focus a box with the caret after what is already in it (used when digits carry over). */
+function focusEnd(el: HTMLInputElement | null) {
+  if (!el) return;
+  el.focus();
+  el.setSelectionRange(el.value.length, el.value.length);
+}
 
 interface SegmentProps {
   id: string;
@@ -136,14 +145,18 @@ function DateOfBirth({
       const parsed = parseDateText(raw);
       if (parsed) return setAll(parsed);
     }
-    const digits = raw.replace(/\D/g, "").slice(0, index === 2 ? 4 : 2);
-    const key = (["day", "month", "year"] as const)[index];
-    onChange({ [key]: digits, dstChoice: null });
-    // A typed separator ("3/") also moves on, the way people write dates.
-    const separator = /[-/. ]$/.test(raw) && digits.length > 0;
-    const advance =
-      index === 0 ? separator || digits.length === 2 || (digits.length === 1 && Number(digits) > 3) : index === 1 ? separator || digits.length === 2 || (digits.length === 1 && Number(digits) > 1) : false;
-    if (advance) requestAnimationFrame(() => refs[index + 1]!.current?.focus());
+    if (index === 2) {
+      onChange({ year: raw.replace(/\D/g, "").slice(0, 4), dstChoice: null });
+      return;
+    }
+    const keys = ["day", "month", "year"] as const;
+    // A typed separator ("3/") ends the box, the way people write dates; anything typed
+    // after it, or past a full box, carries into the next box.
+    const sep = /^(\d*)[-/. ]+(.*)$/.exec(raw);
+    const [keep, carry] = sep ? [sep[1]!.slice(0, 2), sep[2]!.replace(/\D/g, "")] : splitSegment(raw.replace(/\D/g, ""), index === 0 ? 3 : 1);
+    onChange({ [keys[index]]: keep, ...(carry ? { [keys[index + 1]!]: carry.slice(0, index === 0 ? 2 : 4) } : {}), dstChoice: null });
+    const advance = carry !== "" || (sep !== null && keep !== "") || keep.length === 2 || (keep.length === 1 && Number(keep) > (index === 0 ? 3 : 1));
+    if (advance) requestAnimationFrame(() => (carry ? focusEnd(refs[index + 1]!.current) : refs[index + 1]!.current?.focus()));
   };
 
   const keyDown = (index: 0 | 1 | 2, e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -275,9 +288,10 @@ function TimeEntry({
   const minuteInvalid = value.minute !== "" && !validMinute(value.minute);
 
   const onHour = (raw: string) => {
-    const digits = raw.replace(/\D/g, "").slice(0, 2);
-    onChange({ hour12: digits, dstChoice: null });
-    if (digits.length === 2 || (digits.length === 1 && Number(digits) > 1)) requestAnimationFrame(() => minuteRef.current?.focus());
+    const r = readHour(raw.replace(/\D/g, ""));
+    onChange({ hour12: r.hour12, ...(r.meridiem ? { meridiem: r.meridiem } : {}), ...(r.carry ? { minute: r.carry.slice(0, 2) } : {}), dstChoice: null });
+    if (r.carry) requestAnimationFrame(() => focusEnd(minuteRef.current));
+    else if (r.hour12.length === 2 || (r.hour12.length === 1 && Number(r.hour12) > 1)) requestAnimationFrame(() => minuteRef.current?.focus());
   };
   const onMinute = (raw: string) => onChange({ minute: raw.replace(/\D/g, "").slice(0, 2), dstChoice: null });
   const keys = (which: "hour" | "minute") => (e: React.KeyboardEvent<HTMLInputElement>) => {
