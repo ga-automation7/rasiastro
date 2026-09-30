@@ -245,8 +245,8 @@ export class UroRelayProvider implements PaymentProvider {
   }
 
   /** Verifies X-Uropay-Signature with this account's secret. */
-  verifyWebhook(payload: Record<string, unknown>, signature: string | null): boolean {
-    return verifyUroRelaySignature(payload, this.config.apiSecret, signature);
+  verifyWebhook(payload: Record<string, unknown>, signature: string | null, rawBody?: string): boolean {
+    return verifyUroRelaySignature(payload, this.config.apiSecret, signature, rawBody);
   }
 }
 
@@ -303,9 +303,132 @@ export function uroRelaySignedJson(payload: Record<string, unknown>): string {
   return JSON.stringify(ordered);
 }
 
+/**
+ * Top-level keys of a JSON object with each value's ORIGINAL text (e.g. 150.00 stays
+ * "150.00", not 150), so a rebuilt payload matches what the sender serialised.
+ */
+export function rawJsonEntries(raw: string): [string, string][] | null {
+  const s = raw.trim();
+  if (!s.startsWith("{")) return null;
+  const entries: [string, string][] = [];
+  let i = 1;
+  const skipWs = () => {
+    while (i < s.length && /\s/.test(s[i]!)) i += 1;
+  };
+  const readString = (): string => {
+    const start = i;
+    i += 1;
+    while (i < s.length && s[i] !== '"') i += s[i] === "\\" ? 2 : 1;
+    i += 1;
+    return s.slice(start, i);
+  };
+  const readValue = (): string => {
+    const start = i;
+    if (s[i] === '"') return readString();
+    if (s[i] === "{" || s[i] === "[") {
+      let depth = 0;
+      while (i < s.length) {
+        if (s[i] === '"') {
+          readString();
+          continue;
+        }
+        if (s[i] === "{" || s[i] === "[") depth += 1;
+        if (s[i] === "}" || s[i] === "]") depth -= 1;
+        i += 1;
+        if (depth === 0) break;
+      }
+      return s.slice(start, i);
+    }
+    while (i < s.length && !/[,}\s]/.test(s[i]!)) i += 1;
+    return s.slice(start, i);
+  };
+  try {
+    skipWs();
+    if (s[i] === "}") return entries;
+    while (i < s.length) {
+      skipWs();
+      const key = JSON.parse(readString()) as string;
+      skipWs();
+      if (s[i] !== ":") return null;
+      i += 1;
+      skipWs();
+      entries.push([key, readValue()]);
+      skipWs();
+      if (s[i] === ",") {
+        i += 1;
+        continue;
+      }
+      if (s[i] === "}") return entries;
+      return null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+/**
+ * The same documented rebuild as uroRelaySignedJson, from raw value texts and with a
+ * choice of key sort (UroPay's examples sort with localeCompare, ksort and sorted()).
+ */
+function signedJsonFromRaw(entries: [string, string][], byteOrder: boolean): string {
+  const values = new Map(entries);
+  const has = (k: string) => values.has(k);
+  const val = (k: string) => values.get(k);
+  const out: [string, string][] = [];
+  const put = (k: string, orNull: boolean) => {
+    const v = val(k);
+    if (v !== undefined) out.push([k, v]);
+    else if (orNull) out.push([k, "null"]);
+  };
+  const eventRaw = val("event");
+  const event = eventRaw && eventRaw.startsWith('"') ? (JSON.parse(eventRaw) as string) : null;
+  if (event === "order.status.utrsubmitted") {
+    for (const [k, n] of [["event", false], ["uroPayOrderId", false], ["merchantOrderId", false], ["orderStatus", false], ["submittedUTR", true], ["amount", false], ["customerName", false], ["customerEmail", false], ["customerVPA", true], ["environment", false], ["utrSubmittedAt", true]] as const) put(k, n);
+  } else if (has("orderStatus")) {
+    for (const [k, n] of [["event", false], ["uroPayOrderId", false], ["merchantOrderId", false], ["orderStatus", false], ["submittedUTR", true], ["environment", false]] as const) put(k, n);
+  } else {
+    const tail = ["uroPayOrderId", "merchantOrderId", "detectedAt", "environment"];
+    put("event", false);
+    const middle = entries.map(([k]) => k).filter((k) => k !== "event" && !tail.includes(k));
+    middle.sort(byteOrder ? (a, b) => (a < b ? -1 : a > b ? 1 : 0) : (a, b) => a.localeCompare(b));
+    for (const k of middle) put(k, false);
+    for (const k of tail) put(k, true);
+  }
+  return `{${out.map(([k, v]) => `${JSON.stringify(k)}:${v}`).join(",")}}`;
+}
+
+/**
+ * Every serialisation UroPay's documented examples can produce for this notification.
+ * Each still needs our secret to match, so accepting any of them does not weaken the check.
+ */
+export function uroRelaySignedCandidates(payload: Record<string, unknown>, rawBody?: string): string[] {
+  const candidates = new Set<string>([uroRelaySignedJson(payload)]);
+  const entries = rawBody ? rawJsonEntries(rawBody) : null;
+  if (entries) {
+    candidates.add(signedJsonFromRaw(entries, false));
+    candidates.add(signedJsonFromRaw(entries, true));
+  }
+  if (rawBody) candidates.add(rawBody);
+  return [...candidates];
+}
+
 /** hex(HMAC-SHA256(key = hex SHA-512 of the secret, data = the rebuilt JSON)), compared in constant time. */
-export function verifyUroRelaySignature(payload: Record<string, unknown>, apiSecret: string, signature: string | null): boolean {
+export function verifyUroRelaySignature(payload: Record<string, unknown>, apiSecret: string, signature: string | null, rawBody?: string): boolean {
   if (!signature || !/^[0-9a-f]{64}$/i.test(signature)) return false;
-  const expected = crypto.createHmac("sha256", sha512Hex(apiSecret)).update(uroRelaySignedJson(payload), "utf8").digest("hex");
-  return timingSafeEqualString(expected, signature.toLowerCase());
+  const key = sha512Hex(apiSecret);
+  const given = signature.toLowerCase();
+  let ok = false;
+  for (const candidate of uroRelaySignedCandidates(payload, rawBody)) {
+    // Check every candidate (no early exit) so timing does not reveal which one matched.
+    if (timingSafeEqualString(crypto.createHmac("sha256", key).update(candidate, "utf8").digest("hex"), given)) ok = true;
+  }
+  return ok;
+}
+
+/** Field names and value types of a rejected notification, for the logs (never values). */
+export function describePayloadShape(payload: Record<string, unknown>): string {
+  return Object.entries(payload)
+    .map(([k, v]) => `${k}:${v === null ? "null" : Array.isArray(v) ? "array" : typeof v}`)
+    .join(",");
 }

@@ -7,7 +7,7 @@ import { alertOwner } from "@/server/ops/alerts";
 import { deploymentProvider } from "@/server/payments/registry";
 import { getPaymentByProviderOrderId, getPaymentByProviderReference, recordRelayCredit, type Payment } from "@/server/payments/repository";
 import { isPaymentEventProcessed, markPaymentEventProcessed, reconcilePaymentAttempt, recordPaymentEvent } from "@/server/payments/service";
-import { UroRelayProvider, relayEnvironment } from "@/server/payments/urorelay";
+import { UroRelayProvider, describePayloadShape, relayEnvironment } from "@/server/payments/urorelay";
 
 export const dynamic = "force-dynamic";
 
@@ -41,8 +41,13 @@ export async function POST(request: Request): Promise<Response> {
   }
   // The signature covers a documented rebuild of the JSON (see urorelay.ts), so it is
   // checked after parsing. Anything unsigned or altered is refused.
-  if (!provider.verifyWebhook(payload, request.headers.get("x-uropay-signature"))) {
-    log.warn("urorelay webhook rejected: bad signature");
+  if (!provider.verifyWebhook(payload, request.headers.get("x-uropay-signature"), raw)) {
+    // Shape only (field names and types), so a format change can be diagnosed without logging data.
+    log.warn("urorelay webhook rejected: bad signature", {
+      shape: describePayloadShape(payload),
+      hasSignature: Boolean(request.headers.get("x-uropay-signature")),
+      environmentHeader: request.headers.get("x-uropay-environment"),
+    });
     return reply(401, { status: "invalid_signature" });
   }
 

@@ -19,7 +19,7 @@ import {
   startCheckout,
   submitPaymentReference,
 } from "@/server/payments/service";
-import { UroRelayProvider, normaliseUpiReference, uroRelaySignedJson, verifyUroRelaySignature } from "@/server/payments/urorelay";
+import { UroRelayProvider, normaliseUpiReference, rawJsonEntries, uroRelaySignedJson, verifyUroRelaySignature } from "@/server/payments/urorelay";
 import { CapturingEmailProvider, orderInput, resetOverrides, setTestEnv, setupTestDb, stubPdf, THREE_QUESTIONS } from "./helpers";
 
 /**
@@ -190,6 +190,32 @@ describe("UroRelay webhook signature (documented algorithm)", () => {
         JSON.stringify(sms.detectedAt) +
         ',"environment":"TEST"}',
     );
+  });
+
+  it("also accepts the other documented serialisations (raw numbers, byte-order keys, raw body), never a forgery", () => {
+    const key = sha512(SECRET);
+    const hmac = (text: string, k = key) => crypto.createHmac("sha256", k).update(text).digest("hex");
+    // PHP-style sender: amount is a JSON number kept as 150.00; the sender signs its own text.
+    const raw = '{"event":"companion.sms.data","amount":150.00,"referenceNumber":"430686551035","from":null,"vpa":null,"uroPayOrderId":"o-9","merchantOrderId":"RA-9-1","detectedAt":"2026-09-30T10:00:00.000Z","environment":"LIVE"}';
+    const payload = JSON.parse(raw) as Record<string, unknown>;
+    const phpSigned = '{"event":"companion.sms.data","amount":150.00,"from":null,"referenceNumber":"430686551035","vpa":null,"uroPayOrderId":"o-9","merchantOrderId":"RA-9-1","detectedAt":"2026-09-30T10:00:00.000Z","environment":"LIVE"}';
+    expect(verifyUroRelaySignature(payload, SECRET, hmac(phpSigned), raw)).toBe(true);
+    // Without the raw body the parsed number (150) cannot reproduce "150.00".
+    expect(verifyUroRelaySignature(payload, SECRET, hmac(phpSigned))).toBe(false);
+    // Mixed-case extra key: ksort/sorted() order differs from localeCompare.
+    const raw2 = '{"event":"companion.sms.data","amount":"49.00","UPIApp":"x","bank":"y","referenceNumber":"1","uroPayOrderId":null,"merchantOrderId":null,"detectedAt":null,"environment":"LIVE"}';
+    const byteSorted = '{"event":"companion.sms.data","UPIApp":"x","amount":"49.00","bank":"y","referenceNumber":"1","uroPayOrderId":null,"merchantOrderId":null,"detectedAt":null,"environment":"LIVE"}';
+    expect(verifyUroRelaySignature(JSON.parse(raw2) as Record<string, unknown>, SECRET, hmac(byteSorted), raw2)).toBe(true);
+    // A signature over the raw body itself.
+    expect(verifyUroRelaySignature(payload, SECRET, hmac(raw), raw)).toBe(true);
+    // Forgeries still fail in every form.
+    expect(verifyUroRelaySignature(payload, SECRET, hmac(phpSigned, sha512("attacker")), raw)).toBe(false);
+    expect(verifyUroRelaySignature(payload, SECRET, hmac(phpSigned.replace("150.00", "1.00")), raw)).toBe(false);
+    expect(rawJsonEntries('{"a":"x\\"y","b":{"c":[1,{"d":"}"}]},"e":150.00}')).toEqual([
+      ["a", '"x\\"y"'],
+      ["b", '{"c":[1,{"d":"}"}]}'],
+      ["e", "150.00"],
+    ]);
   });
 
   it("accepts only 12 digit UPI references", () => {
