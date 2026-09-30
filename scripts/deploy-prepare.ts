@@ -115,6 +115,55 @@ async function reportConfiguration(): Promise<void> {
   }
 }
 
+/**
+ * Explains a DATABASE_URL problem without revealing it: only the host type, port,
+ * username shape and yes/no facts about the password are printed, never the password.
+ */
+function describeDatabaseUrl(raw: string | undefined): string[] {
+  if (!raw) return ["DATABASE_URL is empty."];
+  const notes: string[] = [];
+  let url: URL;
+  try {
+    url = new URL(raw.trim());
+  } catch {
+    return ["DATABASE_URL is not a valid connection address (it should start with postgresql://)."];
+  }
+  if (raw !== raw.trim()) notes.push("It has spaces or line breaks at the start or end.");
+  if (!/^postgres(ql)?:$/.test(url.protocol)) notes.push(`It starts with "${url.protocol}" instead of "postgresql:".`);
+  const host = url.hostname;
+  const port = url.port || "5432";
+  const pooler = host.endsWith(".pooler.supabase.com");
+  const direct = /^db\.[a-z0-9]+\.supabase\.co$/.test(host);
+  notes.push(`Host type: ${pooler ? "Supabase pooler" : direct ? "Supabase direct connection" : "not a Supabase host"}, port ${port}.`);
+  if (pooler && port !== "6543") notes.push("Use the Transaction pooler (port 6543), not the Session pooler.");
+  if (direct) notes.push("This is the direct connection; use the Transaction pooler string instead.");
+  const user = decodeURIComponent(url.username);
+  const userRef = /^postgres\.([a-z0-9]{20})$/.exec(user)?.[1] ?? null;
+  if (pooler && !userRef) notes.push(`Username should be "postgres.<your project id>" for the pooler; it is "${user.replace(/\..*/, ".…")}".`);
+  const urlRef = (() => {
+    try {
+      return new URL(process.env.SUPABASE_URL ?? "").hostname.split(".")[0] ?? null;
+    } catch {
+      return null;
+    }
+  })();
+  if (userRef && urlRef) notes.push(userRef === urlRef ? "Project id matches SUPABASE_URL." : "Project id does NOT match SUPABASE_URL: the string is from a different Supabase project.");
+  const password = (() => {
+    try {
+      return decodeURIComponent(url.password);
+    } catch {
+      return url.password;
+    }
+  })();
+  if (!password) notes.push("There is no password in the address.");
+  else {
+    if (/YOUR-PASSWORD/i.test(password)) notes.push("The password is still the [YOUR-PASSWORD] placeholder.");
+    if (/[[\]]/.test(password)) notes.push("The password contains square brackets: remove the [ ] around it.");
+    if ((raw.match(/@/g) ?? []).length > 1 || /[#/?\s]/.test(url.password)) notes.push("The password contains characters (@ # / ? or spaces) that break the address: reset it to letters and numbers only.");
+  }
+  return notes;
+}
+
 // Hide anything that looks like a connection string, just in case a driver echoes one.
 const safe = (error: unknown) => String((error as Error).message).replace(/[a-z][a-z0-9+.-]*:\/\/\S+/gi, "[address hidden]");
 let failed = false;
@@ -126,9 +175,11 @@ try {
     // can safely go live while the database is being set up. Once APP_MODE is set, a
     // database problem stops the deployment instead.
     console.warn(`[deploy] WARNING: database preparation did not complete: ${safe(error)}`);
+    for (const note of describeDatabaseUrl(process.env.DATABASE_URL)) console.warn(`[deploy]   DATABASE_URL check: ${note}`);
     console.warn("[deploy] Continuing because APP_MODE is not set, so ordering stays closed.");
   } else {
     console.error(`[deploy] FAILED: ${safe(error)}`);
+    for (const note of describeDatabaseUrl(process.env.DATABASE_URL)) console.error(`[deploy]   DATABASE_URL check: ${note}`);
     failed = true;
   }
 }
