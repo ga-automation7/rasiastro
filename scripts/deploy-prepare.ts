@@ -87,6 +87,22 @@ async function reportConfiguration(): Promise<void> {
       await client.models.retrieve(env.OPENAI_MODEL);
       modelOk = true;
       console.log(`[deploy]   ok      OpenAI model "${env.OPENAI_MODEL}" is available to this API key`);
+      if (env.OPENAI_REASONING_EFFORT) {
+        // A tiny request (a few tokens) proves the model accepts this setting; otherwise
+        // every report would fail with "bad request".
+        try {
+          await client.responses.create({ model: env.OPENAI_MODEL, input: "Reply with OK.", max_output_tokens: 64, store: false, reasoning: { effort: env.OPENAI_REASONING_EFFORT } });
+          console.log(`[deploy]   ok      OpenAI model accepts OPENAI_REASONING_EFFORT=${env.OPENAI_REASONING_EFFORT}`);
+        } catch (effortError) {
+          const effortStatus = (effortError as { status?: number }).status;
+          if (effortStatus === 400) {
+            modelOk = false;
+            console.log(`[deploy]   MISSING OpenAI model "${env.OPENAI_MODEL}" does not accept OPENAI_REASONING_EFFORT=${env.OPENAI_REASONING_EFFORT} (HTTP 400). Remove that setting or choose another value.`);
+          } else {
+            console.log(`[deploy]   UNKNOWN could not test OPENAI_REASONING_EFFORT (${effortStatus ? `HTTP ${effortStatus}` : (effortError as Error).name}).`);
+          }
+        }
+      }
     } catch (error) {
       const status = (error as { status?: number }).status;
       modelOk = status === 404 || status === 400 ? false : null;
@@ -136,7 +152,7 @@ async function reportConfiguration(): Promise<void> {
     );
   }
   if (env.APP_MODE === "live" && modelOk === false) {
-    throw new Error(`OPENAI_MODEL "${env.OPENAI_MODEL}" is not usable, so paid reports could not be written. Fix OPENAI_MODEL before going live.`);
+    throw new Error(`OPENAI_MODEL "${env.OPENAI_MODEL}" (or its OPENAI_REASONING_EFFORT) is not usable, so paid reports could not be written. Fix it before going live.`);
   }
 }
 
