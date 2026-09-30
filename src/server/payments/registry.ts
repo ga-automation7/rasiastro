@@ -2,11 +2,12 @@ import { getEnv } from "../config/env";
 import { getDb } from "../db";
 import { AppError } from "../errors";
 import { CashfreeProvider } from "./cashfree";
-import { activeProviderId, cashfreeCredentials, deploymentPaymentEnvironment, uroPayCredentials } from "./config";
+import { activeProviderId, cashfreeCredentials, deploymentPaymentEnvironment, uroPayCredentials, uroRelayCredentials } from "./config";
 import { DemoPaymentProvider } from "./demo";
-import { getPaymentByProviderOrderId } from "./repository";
+import { getPaymentByProviderOrderId, getRelayAttemptFacts } from "./repository";
 import type { PaymentEnvironment, PaymentProvider, ProviderId } from "./types";
 import { UroPayMerchantProvider } from "./uropay";
+import { UroRelayProvider } from "./urorelay";
 
 /**
  * Chooses the adapter for a payment attempt from the provider and environment SAVED
@@ -56,6 +57,10 @@ export function providerFor(id: ProviderId, environment: PaymentEnvironment): Pa
   if (id === "cashfree") {
     const credentials = cashfreeCredentials(env, environment);
     return credentials ? new CashfreeProvider({ environment, ...credentials, apiVersion: env.CASHFREE_API_VERSION }) : null;
+  }
+  if (id === "urorelay") {
+    const relay = uroRelayCredentials(env);
+    return relay ? new UroRelayProvider({ environment, ...relay, lookup: async (providerOrderId) => getRelayAttemptFacts(await getDb(), providerOrderId) }) : null;
   }
   const credentials = uroPayCredentials(env, environment);
   return credentials ? new UroPayMerchantProvider({ environment, ...credentials }) : null;

@@ -50,6 +50,8 @@ interface Row {
   pay_last_checked_at: Date | null;
   pay_last_check_error: string | null;
   pay_review_reason: string | null;
+  pay_submitted_reference: string | null;
+  pay_confirmed_by: string | null;
   pay_attempts: number;
   people: { n: number; name: string; birth_date: string; time_certainty: string; birth_time: string | null; place: string; timezone_id: string; notes: string | null }[] | null;
   questions: string[] | null;
@@ -63,7 +65,7 @@ const HEADERS = [
   "Order ID", "Reference", "Created (IST)", "Mode", "Report type", "Connection category", "Tradition", "Language", "Package",
   "Amount (₹)", "Paid?", "Payment status", "Paid (IST)",
   "Payment provider", "Payment environment", "Our payment reference", "Provider order ID", "Provider payment ID", "Attempt status",
-  "Payment verified (IST)", "Payment attempts", "Last checked with provider (IST)", "Last check problem", "Review reason",
+  "Payment verified (IST)", "Payment attempts", "Last checked with provider (IST)", "Last check problem", "Review reason", "UPI reference given by customer", "Confirmed or rejected by",
   "Report status", "Report ready (IST)", "Email status", "Email", "Mobile",
   "Person A name", "Person A birth date", "Person A time certainty", "Person A birth time", "Person A birthplace", "Person A time zone", "Person A notes",
   "Person B name", "Person B birth date", "Person B time certainty", "Person B birth time", "Person B birthplace", "Person B time zone", "Person B notes",
@@ -80,7 +82,7 @@ export async function buildOwnerCsv(db: SqlExecutor, filters: AdminFilters): Pro
             lp.provider as pay_provider, lp.environment as pay_environment, lp.provider_order_id as pay_reference,
             lp.provider_reference as pay_provider_order, lp.provider_payment_id as pay_payment_id, lp.status as pay_status,
             lp.verified_at as pay_verified_at, lp.last_checked_at as pay_last_checked_at, lp.last_check_error as pay_last_check_error,
-            lp.review_reason as pay_review_reason,
+            lp.review_reason as pay_review_reason, lp.submitted_reference as pay_submitted_reference, lp.confirmed_by as pay_confirmed_by,
             (select count(*)::int from payments p where p.order_id = o.id) as pay_attempts,
             (select json_agg(json_build_object(
                       'n', b.participant, 'name', b.subject_name, 'birth_date', b.birth_date::text, 'time_certainty', b.time_certainty,
@@ -112,7 +114,7 @@ export async function buildOwnerCsv(db: SqlExecutor, filters: AdminFilters): Pro
       r.id, r.reference, istText(r.created_at), r.mode, r.product, r.compatibility_category ?? "", r.tradition, r.report_language, r.package_code,
       Number(r.total_amount_paise) / 100, paid, r.payment_status, istText(r.paid_at),
       r.pay_provider ?? "", r.pay_environment ?? "", r.pay_reference ?? "", r.pay_provider_order ?? "", r.pay_payment_id ?? "", r.pay_status ?? "",
-      istText(r.pay_verified_at), Number(r.pay_attempts ?? 0), istText(r.pay_last_checked_at), r.pay_last_check_error ?? "", r.pay_review_reason ?? "",
+      istText(r.pay_verified_at), Number(r.pay_attempts ?? 0), istText(r.pay_last_checked_at), r.pay_last_check_error ?? "", r.pay_review_reason ?? "", r.pay_submitted_reference ?? "", r.pay_confirmed_by ?? "",
       r.generation_status, istText(r.report_ready_at), r.delivery_status,
       r.report_email, r.payer_phone ?? "",
       ...person(1), ...person(2),

@@ -7,7 +7,12 @@
  * Everything provider specific (URLs, signing, status names, SDKs, response formats)
  * stays inside that provider's module. The rest of the app only sees these types.
  */
-export type ProviderId = "cashfree" | "uropay" | "demo";
+/**
+ * cashfree = Cashfree Payments. uropay = UroPay Merchant API (hosted checkout).
+ * urorelay = UroRelay (UroPay's phone/SMS product: UPI QR straight to the owner's bank,
+ * confirmed from the bank's credit SMS). demo = simulated, demo mode only.
+ */
+export type ProviderId = "cashfree" | "uropay" | "urorelay" | "demo";
 
 /**
  * Which of a provider's environments a payment attempt lives in. Saved on every
@@ -20,7 +25,7 @@ export type PaymentEnvironment = "demo" | "test" | "production";
 export type EvidenceStatus = "paid" | "pending" | "failed" | "cancelled" | "expired" | "not_attempted";
 
 export interface PaymentEvidence {
-  source: "webhook" | "api" | "demo";
+  source: "webhook" | "api" | "demo" | "manual";
   provider: ProviderId;
   /** The environment whose credentials produced or verified this evidence. */
   environment: PaymentEnvironment;
@@ -35,6 +40,12 @@ export interface PaymentEvidence {
   currency: string | null;
   /** Raw provider status string, for audit. */
   providerStatus: string;
+  /**
+   * The provider reports success but the proof we require is missing or incomplete
+   * (UroRelay: no matching bank SMS). A "paid" claim is then held for the owner to
+   * check, never fulfilled automatically.
+   */
+  holdForReview?: string | null;
 }
 
 export interface CreateCheckoutRequest {
@@ -62,6 +73,11 @@ export interface CheckoutSession {
   /** The provider's own id for the order, when it returns one. */
   providerReference: string | null;
   environment: PaymentEnvironment;
+  /**
+   * Payment details shown on OUR order page instead of a provider page (UroRelay:
+   * the UPI QR image and upi:// link). Browser-safe; stored on the attempt.
+   */
+  checkoutData?: Record<string, string> | null;
 }
 
 export interface PaymentAttemptRef {

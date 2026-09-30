@@ -48,6 +48,12 @@ export default function PrivacyPage() {
             <td>Payment references and status from our payment partner ({b.paymentPartners})</td>
             <td>To confirm payment, prevent fraud, handle refunds and keep financial records. We never receive your card, UPI or bank credentials.</td>
           </tr>
+          {b.paymentPartnerIds.includes("urorelay") ? (
+            <tr>
+              <td>For UPI payments: the UPI reference number you enter, and the amount and reference of the matching credit in our bank account</td>
+              <td>To match your payment to your order. We do not keep the payer name or UPI ID from our bank&apos;s message.</td>
+            </tr>
+          ) : null}
           <tr>
             <td>Confirmations you give (consent, 18 or older, permission to share another person&apos;s details) with their date and time</td>
             <td>To show that the order was placed lawfully.</td>
@@ -72,6 +78,12 @@ export default function PrivacyPage() {
       <ul>
         <li>Supabase: database and private report file storage.</li>
         <li>Vercel: website hosting and short-lived technical logs.</li>
+        {b.paymentPartnerIds.includes("urorelay") ? (
+          <li>
+            UroPay (UroRelay): creates the UPI QR code for your order and confirms payments from the UPI credit messages our bank sends us. Your payment goes directly from your UPI app to our
+            bank account. UroPay receives your email address, your order reference and the UPI reference number you enter.
+          </li>
+        ) : null}
         {b.paymentPartnerIds.includes("uropay") ? (
           <li>
             UroPay: payment orders and its secure payment page (India). UroPay passes each payment to one of its partner payment gateways, which process it under their own policies.

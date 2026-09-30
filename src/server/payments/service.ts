@@ -9,6 +9,7 @@ import { getOrder, recordFunnelEvent, type Order, type PaymentStatus } from "../
 import { RATE_LIMITS, enforceRateLimit } from "../security/rate-limit";
 import { activeProvider, providerFor } from "./registry";
 import {
+  getPaymentById,
   getPaymentByProviderOrderId,
   insertPayment,
   listPaymentsForOrder,
@@ -20,6 +21,7 @@ import {
   type Payment,
   type PaymentRowStatus,
 } from "./repository";
+import { UroRelayProvider, normaliseUpiReference } from "./urorelay";
 import { PaymentProviderError, safeProviderErrorCode, type CheckoutSession, type PaymentEnvironment, type PaymentEvidence, type PaymentProvider, type ProviderId } from "./types";
 
 export { setActivePaymentProviderForTests, setPaymentProviderForTests, setPaymentProvidersForTests } from "./registry";
@@ -155,15 +157,22 @@ export async function startCheckout(orderId: string, clientKey: string): Promise
     if (error instanceof PaymentProviderError) throw new AppError("payment_provider_error", "We could not open the payment page. Please try again in a moment.");
     throw error;
   }
-  await saveCheckoutSession(db, payment.id, { paymentSessionId: session.paymentSessionId, checkoutUrl: session.redirectUrl, providerReference: session.providerReference });
-  if (!session.paymentSessionId && !session.redirectUrl) {
+  // Providers without a hosted page (UroRelay) give us a QR and UPI link to show on our own order page.
+  const redirectUrl = session.redirectUrl ?? (session.checkoutData ? `/orders/${order.id}?payment=upi` : null);
+  await saveCheckoutSession(db, payment.id, {
+    paymentSessionId: session.paymentSessionId,
+    checkoutUrl: redirectUrl,
+    providerReference: session.providerReference,
+    checkoutData: session.checkoutData ?? null,
+  });
+  if (!session.paymentSessionId && !redirectUrl) {
     // The provider says this order can no longer be paid (for example it is already paid): check it now.
     await reconcileAttempts(db, orderId);
     return response(null, `/orders/${order.id}?payment=returned`);
   }
   if (plan.kind === "new") await recordFunnelEvent(db, "checkout_started", order.mode, order.id);
   log.info("checkout opened", { orderId, providerOrderId: payment.providerOrderId, provider: provider.id, resumed: plan.kind === "resume" });
-  return response(session.paymentSessionId, session.redirectUrl);
+  return response(session.paymentSessionId, redirectUrl);
 }
 
 function demoCheckoutUrl(providerOrderId: string): string {
@@ -177,13 +186,14 @@ export type EvidenceOutcome =
   | "amount_mismatch"
   | "environment_mismatch"
   | "reference_mismatch"
+  | "held_for_review"
   | "status_updated"
   | "ignored_terminal"
   | "ignored_not_attempted"
   | "ignored_mismatch"
   | "unknown_payment";
 
-const REVIEW_OUTCOMES: EvidenceOutcome[] = ["amount_mismatch", "duplicate_payment", "environment_mismatch", "reference_mismatch"];
+const REVIEW_OUTCOMES: EvidenceOutcome[] = ["amount_mismatch", "duplicate_payment", "environment_mismatch", "reference_mismatch", "held_for_review"];
 
 /**
  * The single place where payment state changes. Atomically:
@@ -222,6 +232,13 @@ export async function applyPaymentEvidence(evidence: PaymentEvidence): Promise<{
 
     if (evidence.status === "paid") {
       if (payment.status === "paid") return { outcome: "already_paid" as const, orderId: order.id, order };
+      if (evidence.holdForReview) {
+        // The provider says paid, but without the proof we require (UroRelay: bank SMS). A person decides.
+        if (payment.status === "needs_review" && payment.reviewReason === evidence.holdForReview) return { outcome: "ignored_terminal" as const, orderId: order.id, order };
+        await markPaymentForReview(tx, payment, evidence.holdForReview, evidence);
+        if (order.paymentStatus !== "paid") await setOrderPaymentStatus(tx, order.id, "needs_review");
+        return { outcome: "held_for_review" as const, orderId: order.id, order };
+      }
       if (evidence.amountPaise !== payment.amountPaise || evidence.amountPaise !== order.totalAmountPaise || evidence.currency !== order.currency) {
         await markPaymentForReview(tx, payment, "amount_mismatch", evidence);
         if (order.paymentStatus !== "paid") await setOrderPaymentStatus(tx, order.id, "needs_review");
@@ -327,10 +344,14 @@ async function checkAttempt(db: SqlExecutor, p: Payment): Promise<boolean> {
   }
 }
 
-async function reconcileAttempts(db: SqlExecutor, orderId: string): Promise<{ uncertain: number }> {
+async function reconcileAttempts(db: SqlExecutor, orderId: string, options: { minIntervalMs?: number } = {}): Promise<{ uncertain: number }> {
   let uncertain = 0;
   for (const p of await listPaymentsForOrder(db, orderId)) {
-    if (mayStillChange(p) && !(await checkAttempt(db, p))) uncertain += 1;
+    if (!mayStillChange(p)) continue;
+    // Status polling from the order page asks the provider at most this often per attempt
+    // (UroRelay allows 60 requests a minute for the whole account).
+    if (options.minIntervalMs && p.lastCheckedAt && Date.now() - p.lastCheckedAt.getTime() < options.minIntervalMs) continue;
+    if (!(await checkAttempt(db, p))) uncertain += 1;
   }
   return { uncertain };
 }
@@ -348,7 +369,108 @@ export async function reconcileOrderPayments(orderId: string): Promise<Order | n
 export async function refreshPaymentForCustomer(orderId: string, clientKey: string): Promise<Order | null> {
   const db = await getDb();
   await enforceRateLimit(db, RATE_LIMITS.paymentRefresh, clientKey);
-  return reconcileOrderPayments(orderId);
+  await reconcileAttempts(db, orderId, { minIntervalMs: 15_000 });
+  return getOrder(db, orderId);
+}
+
+/**
+ * UroRelay: the customer gives the UPI reference number (UTR) shown in their UPI app
+ * after paying. It is passed to UroPay and saved, but it is UNVERIFIED: the order is
+ * paid only when UroPay confirms it from the owner's bank SMS (see urorelay.ts).
+ * One reference can be claimed by one order only.
+ */
+export async function submitPaymentReference(orderId: string, rawReference: string, clientKey: string): Promise<Order | null> {
+  const db = await getDb();
+  await enforceRateLimit(db, RATE_LIMITS.paymentReference, clientKey);
+  const reference = normaliseUpiReference(rawReference);
+  if (!reference) throw new AppError("validation_failed", "Please enter the 12 digit UPI reference number (UTR) from your UPI app.", { reference: "Enter the 12 digits exactly as shown." });
+  const order = await getOrder(db, orderId);
+  if (!order) throw orderNotAccessible();
+  if (order.paymentStatus === "paid") throw conflict("This order is already paid.");
+  const attempts = await listPaymentsForOrder(db, orderId);
+  const attempt = [...attempts].reverse().find((p) => p.provider === "urorelay" && (p.status === "created" || p.status === "pending") && p.providerReference);
+  if (!attempt) throw conflict("There is no open UPI payment for this order. Please tap “Pay” to get a fresh QR code.");
+  if (attempt.submittedReference === reference) return order;
+  if (attempt.referenceSubmissions >= 3) throw conflict("This reference has been changed too many times. Please contact support with your order reference.");
+  const provider = providerFor(attempt.provider, attempt.environment);
+  if (!(provider instanceof UroRelayProvider)) throw conflict("This payment option is not available right now. Please contact support if money left your account.");
+
+  try {
+    await db.query(
+      `update payments set submitted_reference = $2, reference_submitted_at = now(), reference_submissions = reference_submissions + 1, updated_at = now()
+        where id = $1::uuid`,
+      [attempt.id, reference],
+    );
+  } catch (error) {
+    if (/duplicate key|unique/i.test((error as Error).message)) {
+      throw conflict("This UPI reference number has already been used for another order. Please check the number in your UPI app.");
+    }
+    throw error;
+  }
+  try {
+    const status = await provider.submitReference(attempt.providerReference!, reference);
+    await db.transaction(async (tx) => {
+      await tx.query(`update payments set status = 'pending', provider_status = $2, updated_at = now() where id = $1::uuid and status in ('created', 'pending')`, [attempt.id, `order:${status ?? "UTR_SUBMITTED"}`]);
+      await tx.query(`update orders set payment_status = 'pending', updated_at = now() where id = $1::uuid and payment_status in ('awaiting_payment', 'failed', 'cancelled', 'expired')`, [orderId]);
+    });
+  } catch (error) {
+    // UroPay did not take it (for example a reference it has seen before): let the customer correct it.
+    await db.query(`update payments set submitted_reference = null, reference_submitted_at = null, updated_at = now() where id = $1::uuid and submitted_reference = $2`, [attempt.id, reference]);
+    log.warn("upi reference not accepted", { orderId, code: safeProviderErrorCode(error) });
+    if (error instanceof PaymentProviderError && !error.retriable) throw conflict("UroPay did not accept this reference number. Please check it in your UPI app and try again.");
+    throw new AppError("payment_provider_error", "We could not pass on your reference number just now. Please try again in a minute.");
+  }
+  log.info("upi reference submitted", { orderId, providerOrderId: attempt.providerOrderId });
+  return getOrder(db, orderId);
+}
+
+/**
+ * Owner-only (admin dashboard): confirms a UroRelay payment after checking the bank
+ * account by hand. The owner re-types the UPI reference as a deliberate check. It then
+ * goes through the same atomic path as any verified payment (one job per order).
+ */
+export async function confirmPaymentManually(paymentId: string, typedReference: string, adminEmail: string): Promise<EvidenceOutcome> {
+  const db = await getDb();
+  const payment = await getPaymentById(db, paymentId);
+  if (!payment || payment.provider !== "urorelay") throw new AppError("not_found", "Payment not found.");
+  const reference = normaliseUpiReference(typedReference);
+  if (!reference) throw new AppError("validation_failed", "Type the 12 digit UPI reference exactly as it appears in your bank account.");
+  if (payment.submittedReference && payment.submittedReference !== reference) {
+    throw conflict("That is not the reference the customer gave for this payment. Check the bank entry again.");
+  }
+  // Pressing the button twice is harmless.
+  if (payment.status === "paid") return "already_paid";
+  if (!["created", "pending", "needs_review"].includes(payment.status)) throw conflict(`This payment is ${payment.status}; it cannot be confirmed here.`);
+  const { outcome } = await applyPaymentEvidence({
+    source: "manual",
+    provider: payment.provider,
+    environment: payment.environment,
+    providerOrderId: payment.providerOrderId,
+    providerReference: payment.providerReference,
+    providerPaymentId: reference,
+    status: "paid",
+    amountPaise: payment.amountPaise,
+    currency: payment.currency,
+    providerStatus: "manual:owner_checked_bank",
+  });
+  if (outcome === "confirmed") {
+    await db.query(`update payments set confirmed_by = $2 where id = $1::uuid`, [paymentId, adminEmail]);
+    log.info("payment confirmed by owner", { paymentId });
+  }
+  return outcome;
+}
+
+/** Owner-only: the money never arrived. The customer can then pay again with a fresh QR code. */
+export async function rejectPaymentManually(paymentId: string, adminEmail: string): Promise<void> {
+  const db = await getDb();
+  await db.transaction(async (tx) => {
+    const payment = await getPaymentById(tx, paymentId, true);
+    if (!payment || payment.provider !== "urorelay") throw new AppError("not_found", "Payment not found.");
+    if (!["created", "pending", "needs_review"].includes(payment.status)) throw conflict(`This payment is ${payment.status}; it cannot be marked as not received.`);
+    await tx.query(`update payments set status = 'failed', review_reason = 'owner_not_received', confirmed_by = $2, updated_at = now() where id = $1::uuid`, [paymentId, adminEmail]);
+    await tx.query(`update orders set payment_status = 'failed', updated_at = now() where id = $1::uuid and payment_status <> 'paid'`, [payment.orderId]);
+  });
+  log.info("payment marked not received by owner", { paymentId });
 }
 
 /** Checks one attempt by our reference (used by the webhook routes after a notification). */

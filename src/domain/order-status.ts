@@ -28,4 +28,14 @@ export interface OrderStatusView {
   stages: { key: string; label: string; state: StageState }[];
   supportEmail: string;
   personalDataDeleted: boolean;
+  /**
+   * UPI payment on this page (UroRelay): the QR image and upi:// link for this order's
+   * exact amount, while it can still be paid that way.
+   */
+  upi: { qrCode: string; upiString: string; referenceSubmitted: boolean; referenceHint: string | null } | null;
+  /**
+   * checking = a UPI reference was given and we are waiting for the bank's confirmation;
+   * manual_review = the owner is confirming the payment by hand. Null otherwise.
+   */
+  paymentStage: "checking" | "manual_review" | null;
 }

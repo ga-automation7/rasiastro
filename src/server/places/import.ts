@@ -16,9 +16,9 @@ export type GeonamesDataset = (typeof GEONAMES_DATASETS)[number];
 
 export async function importGeonames(
   db: Database,
-  options: { dataset: GeonamesDataset; dir?: string | null; log?: (message: string) => void },
+  options: { dataset: GeonamesDataset; dir?: string | null; log: (message: string) => void },
 ): Promise<number> {
-  const log = options.log ?? ((m: string) => console.log(m));
+  const { log } = options;
   const load = async (file: string): Promise<Uint8Array> => {
     if (options.dir) return new Uint8Array(fs.readFileSync(path.join(options.dir, file)));
     const res = await fetch(`${BASE}${file}`, { headers: { "user-agent": "RasiAstro-places-import/1.0" }, signal: AbortSignal.timeout(120_000) });

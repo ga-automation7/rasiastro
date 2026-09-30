@@ -22,6 +22,7 @@ export const RATE_LIMITS = {
   compatibilityCreate: { name: "compat_create", limit: 15, windowSeconds: 3600 },
   checkout: { name: "checkout", limit: 20, windowSeconds: 3600 },
   paymentRefresh: { name: "payment_refresh", limit: 60, windowSeconds: 600 },
+  paymentReference: { name: "payment_reference", limit: 10, windowSeconds: 3600 },
   accessExchange: { name: "access_exchange", limit: 30, windowSeconds: 600 },
   recoveryPerIp: { name: "recovery_ip", limit: 5, windowSeconds: 3600 },
   recoveryPerEmail: { name: "recovery_email", limit: 3, windowSeconds: 3600 },

@@ -1,4 +1,4 @@
-import type { SqlExecutor } from "../db";
+import { jsonParam, type SqlExecutor } from "../db";
 import type { PaymentEnvironment, ProviderId } from "./types";
 
 export type PaymentRowStatus = "created" | "pending" | "paid" | "failed" | "cancelled" | "expired" | "needs_review";
@@ -29,6 +29,13 @@ export interface Payment {
   lastCheckedAt: Date | null;
   checkCount: number;
   lastCheckError: string | null;
+  /** Browser-safe details for our own payment page (UroRelay QR and upi:// link). */
+  checkoutData: Record<string, string> | null;
+  /** UroRelay: the UPI reference the customer typed in (unverified). */
+  submittedReference: string | null;
+  referenceSubmittedAt: Date | null;
+  referenceSubmissions: number;
+  confirmedBy: string | null;
 }
 
 interface PaymentRow {
@@ -54,11 +61,17 @@ interface PaymentRow {
   last_checked_at: Date | null;
   check_count: number;
   last_check_error: string | null;
+  checkout_data: Record<string, string> | string | null;
+  submitted_reference: string | null;
+  reference_submitted_at: Date | null;
+  reference_submissions: number;
+  confirmed_by: string | null;
 }
 
 const COLUMNS = `id, order_id, provider, environment, provider_order_id, provider_reference, attempt, amount_paise, currency, status,
   payment_session_id, checkout_url, provider_payment_id, provider_status, review_reason, created_at, updated_at, expires_at,
-  verified_at, last_checked_at, check_count, last_check_error`;
+  verified_at, last_checked_at, check_count, last_check_error, checkout_data, submitted_reference, reference_submitted_at,
+  reference_submissions, confirmed_by`;
 
 const map = (r: PaymentRow): Payment => ({
   id: r.id,
@@ -83,11 +96,16 @@ const map = (r: PaymentRow): Payment => ({
   lastCheckedAt: r.last_checked_at,
   checkCount: r.check_count,
   lastCheckError: r.last_check_error,
+  checkoutData: typeof r.checkout_data === "string" ? (JSON.parse(r.checkout_data) as Record<string, string>) : r.checkout_data,
+  submittedReference: r.submitted_reference,
+  referenceSubmittedAt: r.reference_submitted_at,
+  referenceSubmissions: r.reference_submissions,
+  confirmedBy: r.confirmed_by,
 });
 
 /** True when the customer was given something they could pay with for this attempt. */
 export function wasOpened(p: Payment): boolean {
-  return p.provider === "demo" || Boolean(p.paymentSessionId || p.checkoutUrl);
+  return p.provider === "demo" || Boolean(p.paymentSessionId || p.checkoutUrl || p.checkoutData);
 }
 
 export async function getPaymentByProviderOrderId(db: SqlExecutor, providerOrderId: string, forUpdate = false): Promise<Payment | null> {
@@ -117,14 +135,15 @@ export async function insertPayment(
 export async function saveCheckoutSession(
   db: SqlExecutor,
   paymentId: string,
-  s: { paymentSessionId: string | null; checkoutUrl: string | null; providerReference: string | null },
+  s: { paymentSessionId: string | null; checkoutUrl: string | null; providerReference: string | null; checkoutData?: Record<string, string> | null },
 ): Promise<void> {
   await db.query(
     `update payments set payment_session_id = coalesce($2, payment_session_id), checkout_url = coalesce($3, checkout_url),
-            provider_reference = coalesce(provider_reference, $4), provider_status = case when provider_status = 'CREATE_UNCONFIRMED' then null else provider_status end,
+            provider_reference = coalesce(provider_reference, $4), checkout_data = coalesce($5::jsonb, checkout_data),
+            provider_status = case when provider_status = 'CREATE_UNCONFIRMED' then null else provider_status end,
             last_check_error = null, updated_at = now()
       where id = $1::uuid`,
-    [paymentId, s.paymentSessionId, s.checkoutUrl, s.providerReference],
+    [paymentId, s.paymentSessionId, s.checkoutUrl, s.providerReference, s.checkoutData ? jsonParam(s.checkoutData) : null],
   );
 }
 
@@ -147,7 +166,7 @@ export async function listPaymentsNeedingReconciliation(db: SqlExecutor, limit: 
       where ((status in ('created', 'pending') and created_at > now() - interval '3 days')
              -- A failed/cancelled attempt can still be completed on the same hosted checkout (Cashfree).
              or (status in ('failed', 'cancelled') and updated_at > now() - interval '2 hours'))
-        and (provider = 'demo' or payment_session_id is not null or checkout_url is not null)
+        and (provider = 'demo' or payment_session_id is not null or checkout_url is not null or checkout_data is not null)
         and created_at < now() - interval '2 minutes'
         and (last_checked_at is null or last_checked_at < now() - (least(check_count, 6) * 10) * interval '1 minute')
       order by coalesce(last_checked_at, created_at)
@@ -164,4 +183,64 @@ export async function listPendingPastWindow(db: SqlExecutor, limit: number): Pro
     [limit],
   );
   return rows.map(map);
+}
+
+export async function getPaymentById(db: SqlExecutor, id: string, forUpdate = false): Promise<Payment | null> {
+  const rows = await db.query<PaymentRow>(`select ${COLUMNS} from payments where id = $1::uuid ${forUpdate ? "for update" : ""}`, [id]);
+  return rows[0] ? map(rows[0]) : null;
+}
+
+export async function getPaymentByProviderReference(db: SqlExecutor, provider: string, providerReference: string): Promise<Payment | null> {
+  const rows = await db.query<PaymentRow>(`select ${COLUMNS} from payments where provider = $1 and provider_reference = $2 limit 1`, [provider, providerReference]);
+  return rows[0] ? map(rows[0]) : null;
+}
+
+/** A bank credit reported by the UroPay Companion app (UroRelay). */
+export interface RelayCreditRow {
+  id: string;
+  environment: "test" | "production";
+  reference_number: string | null;
+  amount_paise: number | null;
+  uropay_order_id: string | null;
+  merchant_order_id: string | null;
+  detected_at: Date | null;
+  payment_id: string | null;
+  received_at: Date;
+}
+
+/**
+ * Stores a reported bank credit once (the bank reference is unique). Returns the stored
+ * row and whether it was new; a repeat of the same reference is never counted twice.
+ */
+export async function recordRelayCredit(
+  db: SqlExecutor,
+  c: { environment: "test" | "production"; referenceNumber: string | null; amountPaise: number | null; uroPayOrderId: string | null; merchantOrderId: string | null; detectedAt: Date | null; paymentId: string | null },
+): Promise<{ row: RelayCreditRow; isNew: boolean }> {
+  const inserted = await db.query<RelayCreditRow>(
+    `insert into relay_bank_credits (environment, reference_number, amount_paise, uropay_order_id, merchant_order_id, detected_at, payment_id)
+     values ($1, $2, $3::int, $4, $5, $6::timestamptz, $7::uuid)
+     on conflict (reference_number) where reference_number is not null do nothing
+     returning *`,
+    [c.environment, c.referenceNumber, c.amountPaise, c.uroPayOrderId, c.merchantOrderId, c.detectedAt ? c.detectedAt.toISOString() : null, c.paymentId],
+  );
+  if (inserted[0]) return { row: inserted[0], isNew: true };
+  const existing = await db.query<RelayCreditRow>(`select * from relay_bank_credits where reference_number = $1`, [c.referenceNumber]);
+  return { row: existing[0]!, isNew: false };
+}
+
+/** What we hold about a UroRelay attempt, for deciding whether UroPay's COMPLETED is backed by a bank SMS. */
+export async function getRelayAttemptFacts(db: SqlExecutor, providerOrderId: string) {
+  const payment = await getPaymentByProviderOrderId(db, providerOrderId);
+  if (!payment) return null;
+  const credits = payment.providerReference
+    ? await db.query<RelayCreditRow>(
+        `select * from relay_bank_credits where uropay_order_id = $1 and (merchant_order_id is null or merchant_order_id = $2) order by received_at`,
+        [payment.providerReference, payment.providerOrderId],
+      )
+    : [];
+  return {
+    submittedReference: payment.submittedReference,
+    referenceSubmittedAt: payment.referenceSubmittedAt,
+    credits: credits.map((c) => ({ referenceNumber: c.reference_number, amountPaise: c.amount_paise, uroPayOrderId: c.uropay_order_id, environment: c.environment })),
+  };
 }

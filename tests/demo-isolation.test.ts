@@ -129,24 +129,32 @@ describe("demo mode can never take real money", () => {
     expect(getCheckoutAvailability().available).toBe(true);
   });
 
-  it("UroPay needs the Merchant API product and keys for this environment; UroRelay is refused", () => {
-    const uropay = { ...LIVE_OK, PAYMENT_PROVIDER: "uropay", UROPAY_PRODUCT: "merchant_api", UROPAY_LIVE_API_KEY: "k", UROPAY_LIVE_API_SECRET: "s" };
-    setTestEnv(uropay);
+  it("UroRelay and the UroPay Merchant API are separate providers with separate keys", () => {
+    const relay = { ...LIVE_OK, PAYMENT_PROVIDER: "urorelay", UROPAY_RELAY_API_KEY: "relay-key", UROPAY_RELAY_API_SECRET: "relay-secret" };
+    setTestEnv(relay);
+    expect(getCheckoutAvailability().available).toBe(true);
+    expect(activeProvider()).toMatchObject({ id: "urorelay", environment: "production" });
+    // Relay keys are never used for the Merchant API, and the other way round.
+    expect(providerFor("uropay", "production")).toBeNull();
+    setTestEnv({ ...relay, UROPAY_RELAY_API_SECRET: undefined });
+    expect(getCheckoutAvailability().missing.join(" ")).toMatch(/UROPAY_RELAY_API_KEY and UROPAY_RELAY_API_SECRET/);
+    setTestEnv({ ...LIVE_OK, PAYMENT_PROVIDER: "urorelay", UROPAY_LIVE_API_KEY: "k", UROPAY_LIVE_API_SECRET: "s" });
+    expect(getCheckoutAvailability().available).toBe(false);
+
+    const merchant = { ...LIVE_OK, PAYMENT_PROVIDER: "uropay", UROPAY_LIVE_API_KEY: "k", UROPAY_LIVE_API_SECRET: "s" };
+    setTestEnv(merchant);
     expect(getCheckoutAvailability().available).toBe(true);
     expect(activeProvider()).toMatchObject({ id: "uropay", environment: "production" });
-    setTestEnv({ ...uropay, UROPAY_PRODUCT: undefined });
-    expect(getCheckoutAvailability().missing.join(" ")).toMatch(/UROPAY_PRODUCT=merchant_api/);
-    setTestEnv({ ...uropay, UROPAY_PRODUCT: "urorelay" });
-    expect(getCheckoutAvailability().missing.join(" ")).toMatch(/urorelay is not supported/);
-    expect(providerFor("uropay", "production")).toBeNull();
-    setTestEnv({ ...uropay, UROPAY_LIVE_API_SECRET: undefined });
+    expect(providerFor("urorelay", "production")).toBeNull();
+    setTestEnv({ ...merchant, UROPAY_LIVE_API_SECRET: undefined });
     expect(getCheckoutAvailability().available).toBe(false);
   });
 
   it("the provider that is not active stays available for its existing attempts", () => {
-    setTestEnv({ ...LIVE_OK, PAYMENT_PROVIDER: "cashfree", UROPAY_PRODUCT: "merchant_api", UROPAY_LIVE_API_KEY: "k", UROPAY_LIVE_API_SECRET: "s" });
+    setTestEnv({ ...LIVE_OK, PAYMENT_PROVIDER: "cashfree", UROPAY_LIVE_API_KEY: "k", UROPAY_LIVE_API_SECRET: "s", UROPAY_RELAY_API_KEY: "rk", UROPAY_RELAY_API_SECRET: "rs" });
     expect(activeProvider().id).toBe("cashfree");
     expect(providerFor("uropay", "production")?.id).toBe("uropay");
+    expect(providerFor("urorelay", "production")?.id).toBe("urorelay");
   });
 
   it("sandbox uses every real adapter but is refused on rasiastro.com", () => {

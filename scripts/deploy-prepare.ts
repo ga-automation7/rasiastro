@@ -64,19 +64,78 @@ async function main(): Promise<void> {
   }
 }
 
+/**
+ * Production configuration report for the build log: every readiness check (names and
+ * explanations only, never values), the OpenAI model, and the Resend sending domain.
+ * With APP_MODE=live an unusable AI model stops the deployment: the shop must not take
+ * money for reports it cannot write.
+ */
+async function reportConfiguration(): Promise<void> {
+  if (process.env.VERCEL_ENV !== "production") return;
+  const { getEnv } = await import("../src/server/config/env");
+  const { getConfigChecks, getProductChecks, getSiteState } = await import("../src/server/config/readiness");
+  const env = getEnv();
+  console.log(`[deploy] configuration (APP_MODE=${process.env.APP_MODE?.trim() || "not set"}, site state: ${getSiteState(env).kind}):`);
+  for (const c of [...getConfigChecks(env), ...getProductChecks("personal", env), ...getProductChecks("compatibility", env)]) {
+    console.log(`[deploy]   ${c.ok ? "ok     " : "MISSING"} ${c.label}${c.ok ? "" : ` - ${c.detail}`}`);
+  }
+  let modelOk: boolean | null = null;
+  if (env.OPENAI_API_KEY && env.OPENAI_MODEL) {
+    try {
+      const { default: OpenAI } = await import("openai");
+      const client = new OpenAI({ apiKey: env.OPENAI_API_KEY, maxRetries: 0, timeout: 20_000 });
+      await client.models.retrieve(env.OPENAI_MODEL);
+      modelOk = true;
+      console.log(`[deploy]   ok      OpenAI model "${env.OPENAI_MODEL}" is available to this API key`);
+    } catch (error) {
+      const status = (error as { status?: number }).status;
+      modelOk = status === 404 || status === 400 ? false : null;
+      console.log(
+        status === 404
+          ? `[deploy]   MISSING OpenAI model "${env.OPENAI_MODEL}" does not exist or this key cannot use it (HTTP 404). Choose a model listed in your OpenAI project.`
+          : status === 401
+            ? "[deploy]   MISSING OpenAI rejected the API key (HTTP 401)."
+            : `[deploy]   UNKNOWN could not check the OpenAI model (${status ? `HTTP ${status}` : (error as Error).name}).`,
+      );
+    }
+  }
+  if (env.RESEND_API_KEY) {
+    try {
+      const { Resend } = await import("resend");
+      const { data, error } = await new Resend(env.RESEND_API_KEY).domains.list();
+      const fromDomain = env.EMAIL_FROM.match(/@([^>\s]+)/)?.[1];
+      const domain = data?.data.find((d) => d.name === fromDomain);
+      console.log(error ? "[deploy]   MISSING Resend rejected the API key." : domain ? `[deploy]   ${domain.status === "verified" ? "ok     " : "MISSING"} Resend domain ${domain.name}: ${domain.status}` : `[deploy]   MISSING Resend has no domain "${fromDomain}"`);
+    } catch (error) {
+      console.log(`[deploy]   UNKNOWN could not check Resend (${(error as Error).name}).`);
+    }
+  }
+  if (env.APP_MODE === "live" && modelOk === false) {
+    throw new Error(`OPENAI_MODEL "${env.OPENAI_MODEL}" is not usable, so paid reports could not be written. Fix OPENAI_MODEL before going live.`);
+  }
+}
+
+// Hide anything that looks like a connection string, just in case a driver echoes one.
+const safe = (error: unknown) => String((error as Error).message).replace(/[a-z][a-z0-9+.-]*:\/\/\S+/gi, "[address hidden]");
+let failed = false;
 try {
   await main();
 } catch (error) {
-  // Hide anything that looks like a connection string, just in case a driver echoes one.
-  const message = String((error as Error).message).replace(/[a-z][a-z0-9+.-]*:\/\/\S+/gi, "[address hidden]");
   if (!process.env.APP_MODE?.trim()) {
     // Without APP_MODE a hosted site never takes orders (see readiness.ts), so the pages
     // can safely go live while the database is being set up. Once APP_MODE is set, a
     // database problem stops the deployment instead.
-    console.warn(`[deploy] WARNING: database preparation did not complete: ${message}`);
+    console.warn(`[deploy] WARNING: database preparation did not complete: ${safe(error)}`);
     console.warn("[deploy] Continuing because APP_MODE is not set, so ordering stays closed.");
   } else {
-    console.error(`[deploy] FAILED: ${message}`);
-    process.exit(1);
+    console.error(`[deploy] FAILED: ${safe(error)}`);
+    failed = true;
   }
 }
+try {
+  await reportConfiguration();
+} catch (error) {
+  console.error(`[deploy] FAILED: ${safe(error)}`);
+  failed = true;
+}
+if (failed) process.exit(1);

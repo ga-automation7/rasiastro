@@ -7,8 +7,13 @@ variable, and the order to do things in. Written for a non-programmer owner.
 > domains, register webhooks or approve anything with a provider. Those are the
 > separate account actions listed in [LAUNCH_CHECKLIST.md](LAUNCH_CHECKLIST.md).
 
-Last checked against the official Vercel, Inngest and Cashfree documentation on
-29 September 2026.
+Last checked against the official Vercel, Inngest, UroPay (UroRelay and Merchant API)
+and Cashfree documentation on 30 September 2026.
+
+**Current project:** `rasiastro` in the Vercel team **GA Automations** (Hobby plan).
+Pushing to the `main` branch on GitHub deploys to production automatically.
+`rasiastro.com` redirects to `www.rasiastro.com`, so provider webhooks must use the
+`www` address (webhooks do not reliably follow redirects).
 
 ---
 
@@ -34,7 +39,7 @@ Last checked against the official Vercel, Inngest and Cashfree documentation on
 | `APP_MODE` | Payments | AI, email, storage, jobs | Allowed on rasiastro.com? | Banner |
 | --- | --- | --- | --- | --- |
 | `demo` | simulated | sample text; hosted demo still needs Supabase | No | "Explore a sample journey…" |
-| `sandbox` | Cashfree **test** environment, no real money | all real | No | "Test site…" |
+| `sandbox` | the payment provider's **test** environment, no real money | all real | No | "Test site…" |
 | `live` | real money | all real | Yes (required there) | none |
 
 If anything required is missing, the site shows **one** message ("Online ordering is not
@@ -93,14 +98,27 @@ as you. None of these ever reach the browser (there are no `NEXT_PUBLIC_` variab
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only key for the private PDF bucket | Supabase > Project Settings > API > `service_role` / secret key | **Yes (very sensitive)** | Yes | test project key | live project key |
 | `SUPABASE_REPORTS_BUCKET` | Bucket name | Default is fine | No | No (default `reports`) | `reports` | `reports` |
 
-### Payments (Cashfree)
+### Payments
+
+Only the provider named in `PAYMENT_PROVIDER` is used for **new** checkouts. Every
+payment attempt remembers its provider and environment, so after switching (for example
+from UroRelay to Cashfree) older orders keep being checked through their original
+provider. Keep the old provider's keys until its open orders are settled.
 
 | Variable | What it does | Where you get it | Secret | Required | Test value | Live value |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CASHFREE_ENV` | Test or real environment | Fixed | No | Yes | `sandbox` | `production` |
-| `CASHFREE_CLIENT_ID` | Cashfree App ID | Cashfree Merchant Dashboard > Developers > API Keys (switch the dashboard to Test/Live as appropriate) | Yes | Yes | sandbox App ID | production App ID |
-| `CASHFREE_CLIENT_SECRET` | Cashfree Secret Key; also verifies webhook signatures | Same place | **Yes** | Yes | sandbox secret | production secret |
+| `PAYMENT_PROVIDER` | Provider for new checkouts | You choose: `urorelay`, `uropay` (Merchant API) or `cashfree` | No | Yes | `urorelay` | `urorelay` (now), `cashfree` (later) |
+| `PAYMENT_ENV` | Must match `APP_MODE` | Fixed | No | Yes | `test` | `production` |
+| `UROPAY_RELAY_API_KEY` | UroRelay API key | app.uropay.me > API Keys | Yes | With `urorelay` | your key | your key |
+| `UROPAY_RELAY_API_SECRET` | UroRelay API secret; also verifies its webhooks | Same place (shown when you regenerate keys) | **Yes** | With `urorelay` | your secret | your secret |
+| `UROPAY_TEST_API_KEY`, `UROPAY_TEST_API_SECRET` | UroPay **Merchant API** test keys (a different product) | dashboard.uropay.me | **Yes** | With `uropay` | test keys | |
+| `UROPAY_LIVE_API_KEY`, `UROPAY_LIVE_API_SECRET` | UroPay Merchant API production keys (need KYC) | Same | **Yes** | With `uropay` | | live keys |
+| `CASHFREE_TEST_CLIENT_ID`, `CASHFREE_TEST_CLIENT_SECRET` | Cashfree sandbox keys | Cashfree Merchant Dashboard (Test) > Developers > API Keys | **Yes** | With `cashfree` | sandbox keys | |
+| `CASHFREE_LIVE_CLIENT_ID`, `CASHFREE_LIVE_CLIENT_SECRET` | Cashfree production keys | Same, Live mode | **Yes** | With `cashfree` | | live keys |
 | `CASHFREE_API_VERSION` | API version the code uses | Leave as is | No | No (default `2026-01-01`) | default | default |
+
+Live payments are refused on Vercel Preview and Development deployments, whatever the
+variables say. A deployment only reads the keys of its own environment.
 
 ### AI (OpenAI)
 
@@ -132,7 +150,7 @@ as you. None of these ever reach the browser (there are no `NEXT_PUBLIC_` variab
 | `JOB_RUNNER` | Durable jobs | Fixed | No | Yes | `inngest` | `inngest` |
 | `INNGEST_EVENT_KEY` | Lets the app send job events | Added automatically by the **Inngest Vercel integration** | Yes | Yes | set by integration | set by integration |
 | `INNGEST_SIGNING_KEY` | Lets the app verify Inngest's calls | Added automatically by the integration | **Yes** | Yes | set by integration | set by integration |
-| `INNGEST_SERVE_ORIGIN` | Read by the Inngest SDK: tells Inngest to call your custom domain | You set it | No | Live: yes | empty | `https://rasiastro.com` |
+| `INNGEST_SERVE_ORIGIN` | Read by the Inngest SDK: tells Inngest to call your custom domain | You set it | No | Recommended | empty | `https://www.rasiastro.com` |
 | `REPORT_CONCURRENCY` | Reports generated at once, per product | You choose | No | No (default `3`) | default | default |
 
 ### PDF
@@ -161,10 +179,18 @@ as you. None of these ever reach the browser (there are no `NEXT_PUBLIC_` variab
 | `GRIEVANCE_OFFICER_NAME` | Required disclosure | No | **Live: yes** | a named person |
 | `GRIEVANCE_OFFICER_DESIGNATION`, `GRIEVANCE_OFFICER_EMAIL`, `GRIEVANCE_OFFICER_PHONE` | Grievance contact (email/phone default to support) | No | Recommended | |
 
+### Owner dashboard
+
+| Variable | What it does | Secret | Required | Value |
+| --- | --- | --- | --- | --- |
+| `ADMIN_EMAILS` | Who may sign in at `/admin` (comma separated). Empty = dashboard off | No | For the dashboard | your email |
+| `ADMIN_SESSION_HOURS` | How long a sign-in lasts | No | No (default `12`) | `12` |
+
 ### Do not set these
 
 - Set by Vercel automatically: `VERCEL`, `VERCEL_ENV`, `VERCEL_PROJECT_PRODUCTION_URL`, `NODE_ENV`.
 - Local-only: `LOCAL_DB_DIR`, `LOCAL_STORAGE_DIR`, `INNGEST_DEV`.
+- Replaced (no longer read): `CASHFREE_ENV`, `CASHFREE_CLIENT_ID`, `CASHFREE_CLIENT_SECRET`, `UROPAY_PRODUCT`.
 - Demo-only: `DEMO_USE_REAL_AI`, `DEMO_SEND_REAL_EMAIL`.
 
 ## 5. Settings in the Vercel dashboard
@@ -186,67 +212,42 @@ as you. None of these ever reach the browser (there are no `NEXT_PUBLIC_` variab
 - **Settings > Domains** (live only): add `rasiastro.com` and `www.rasiastro.com`.
   Vercel then shows the exact DNS records to enter at GoDaddy; copy them exactly.
 
-## 6. One-time database bootstrap (run on your computer)
+## 6. Database: prepared automatically on every production deployment
 
-Put the target project's values in `.env.local` (never commit it), then:
+You do not run database commands. `package.json` has a `vercel-build` script that runs
+`scripts/deploy-prepare.ts` before each **Production** build:
 
-```bash
-npm run db:migrate
-```
+1. Applies any new migration in `db/migrations/` (each once, in order, in its own
+   transaction; applied ones are checksummed and never re-run; nothing is dropped).
+   The runner creates its own `schema_migrations` table first, which is why
+   `0001` cannot be pasted into the Supabase SQL editor on its own.
+2. Imports the GeoNames birthplace list (about 150,000 places) the first time only.
+3. Stops the deployment if the `reports` bucket is public.
 
-Expected: `Applied: 0001_initial_schema, 0002_compatibility` and `Schema version: 0002_compatibility`.
-Running it again prints `No pending migrations.`
+Its lines start with `[deploy]` in the Vercel build log. Preview builds never touch a
+database. While `APP_MODE` is not set, a database problem only produces a warning (the
+site stays closed); once `APP_MODE` is set, it stops the deployment instead.
 
-```bash
-npm run storage:setup
-```
+`npm run db:migrate`, `npm run places:import` and `npm run config:check` still work on
+your computer with the values in `.env.local`, if you ever need them.
 
-Expected: a line confirming the **private** `reports` bucket exists. It never makes the bucket public.
+## 7. Webhooks
 
-```bash
-npm run places:import
-```
+| Provider | Where | URL |
+| --- | --- | --- |
+| UroRelay | app.uropay.me > Webhooks | `https://www.rasiastro.com/api/webhooks/urorelay` |
+| UroPay Merchant API | set per order by the app (no dashboard entry needed) | `https://www.rasiastro.com/api/webhooks/uropay` |
+| Cashfree | Merchant Dashboard > Developers > Webhooks | `https://www.rasiastro.com/api/webhooks/cashfree` (events `PAYMENT_SUCCESS_WEBHOOK`, `PAYMENT_FAILED_WEBHOOK`, `PAYMENT_USER_DROPPED_WEBHOOK`) |
 
-Expected: downloads the GeoNames `cities1000` file (about 10 MB) and reports roughly
-150,000 places imported. Birthplace search does not work until this has run; that was
-the cause of "Search is unavailable" on a site without a database.
-
-```bash
-npm run config:check
-```
-
-Expected: every line ticked for the mode you set, and both products `AVAILABLE`.
-
-## 7. Webhook (Cashfree)
-
-In the Cashfree Merchant Dashboard (Test mode for sandbox, Live for production):
-**Developers > Webhooks > add endpoint**
-
-- URL: `https://<the address taking orders>/api/webhooks/cashfree`
-  (sandbox: your `*.vercel.app` address; live: `https://rasiastro.com/api/webhooks/cashfree`)
-- Events: `PAYMENT_SUCCESS_WEBHOOK`, `PAYMENT_FAILED_WEBHOOK`, `PAYMENT_USER_DROPPED_WEBHOOK`
-  (`PAYMENT_CHARGES_WEBHOOK` is received but ignored).
-
-The app verifies each notification's signature against the raw body with your Cashfree
-secret, and matches order, amount and currency. It also sends a `notify_url` with each
-order, and checks the payment directly with Cashfree when the customer returns and
-every 10 minutes. A missed webhook is therefore recovered, never trusted blindly.
+Every notification's signature is checked, and none of them marks an order paid on its
+own: the app always asks the provider for the order's status itself (and every 10
+minutes for open orders), so a lost notification is recovered and a forged one does
+nothing. See [docs/PAYMENTS.md](docs/PAYMENTS.md) for how UroRelay confirmation works.
 
 ## 8. Deploy and roll back
 
-These commands need the Vercel CLI and your login; **nothing is deployed publicly until you run them.**
-
-```bash
-npx vercel
-```
-
-Creates a preview deployment (protected, not public) to check a build.
-
-```bash
-npx vercel --prod
-```
-
-Deploys to production (the address that takes orders).
+Pushing to `main` on GitHub deploys to production automatically (Vercel's Git
+integration). A failed build never replaces the live site.
 
 ```bash
 npx vercel rollback

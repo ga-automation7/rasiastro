@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { goToCheckout, type CheckoutStart } from "@/components/order/checkout";
 import type { OrderStatusView, StageState } from "@/domain/order-status";
+import { UpiPayment } from "./UpiPayment.client";
 
 /**
  * Live order status. Shows only states recorded on the server (no fake progress).
@@ -13,6 +14,8 @@ import type { OrderStatusView, StageState } from "@/domain/order-status";
 const ICON: Record<StageState, string> = { done: "✓", active: "…", pending: "", failed: "!", skipped: "–" };
 
 function settled(v: OrderStatusView): boolean {
+  // A UPI payment being confirmed by hand can still turn into a paid order: keep watching.
+  if (v.paymentStage === "manual_review" && v.paymentStatus !== "paid") return false;
   if (["failed", "cancelled", "expired", "needs_review"].includes(v.paymentStatus)) return true;
   if (v.generationStatus === "failed") return true;
   return v.generationStatus === "ready" && (v.deliveryStatus === "sent" || v.deliveryStatus === "failed");
@@ -131,7 +134,9 @@ export function OrderStatus({ initial, paymentReturned, startFailed, typicalMinu
         </ol>
       </section>
 
-      {p === "awaiting_payment" || p === "failed" || p === "cancelled" || p === "expired" ? (
+      {view.upi && view.paymentStage !== "manual_review" ? <UpiPayment view={view} onUpdate={setView} /> : null}
+
+      {!view.upi && (p === "awaiting_payment" || p === "failed" || p === "cancelled" || p === "expired") ? (
         <div className="card space-y-3 p-5">
           <p className="font-semibold text-ink-900">
             {p === "awaiting_payment" ? "Payment not completed yet." : p === "failed" ? "The payment did not go through." : p === "cancelled" ? "The payment was cancelled." : "The payment session expired."}
@@ -151,14 +156,28 @@ export function OrderStatus({ initial, paymentReturned, startFailed, typicalMinu
         </div>
       ) : null}
 
-      {p === "pending" ? (
+      {view.paymentStage === "manual_review" ? (
+        <div className="card p-5 text-sm">
+          <p className="font-semibold text-ink-900">We are confirming your UPI payment by hand.</p>
+          <p className="mt-1 text-muted">
+            Our bank has not confirmed it automatically yet, so we are checking it ourselves. Please do not pay again. This page updates by itself once it is confirmed, and you can also
+            close it: we will email you when your report is ready. Questions? Write to{" "}
+            <a className="underline" href={`mailto:${view.supportEmail}?subject=Order ${view.reference}`}>
+              {view.supportEmail}
+            </a>{" "}
+            with reference {view.reference}.
+          </p>
+        </div>
+      ) : null}
+
+      {p === "pending" && !view.upi && view.paymentStage !== "manual_review" ? (
         <div className="card p-5 text-sm">
           <p className="font-semibold text-ink-900">Your bank is still confirming the payment.</p>
           <p className="mt-1 text-muted">This page checks automatically. You can also close it; we will email you when your report is ready.</p>
         </div>
       ) : null}
 
-      {p === "needs_review" ? (
+      {p === "needs_review" && view.paymentStage !== "manual_review" ? (
         <div className="card p-5 text-sm">
           <p className="font-semibold text-ink-900">We are checking this payment manually.</p>
           <p className="mt-1 text-muted">

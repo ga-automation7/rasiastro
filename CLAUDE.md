@@ -8,7 +8,9 @@ Rasi Astro (rasiastro.com) sells personalised astrology reports. Two products:
   category (relationship, marriage, friendship, career & teamwork, business partnership,
   family), one tradition, one language. No question add-on.
 
-Customers pay through Cashfree and receive a web report + PDF by private email link.
+Customers pay through the provider in `PAYMENT_PROVIDER` (now UroRelay UPI; Cashfree and the
+UroPay Merchant API are also implemented, see docs/PAYMENTS.md) and receive a web report + PDF
+by private email link.
 **There are no customer accounts.** Positioning: "Centuries of tradition. Calculated by
 machines. Interpreted for you."
 
@@ -51,7 +53,8 @@ src/server/        server-only code (never import from *.client.tsx - ESLint enf
   db/              Database interface; postgres.js (Supabase) and PGlite (demo/tests); migrator
   places/          gazetteer search, demo places, GeoNames parser
   orders/          order creation (both products), birth resolution, status view
-  payments/        provider interface, Cashfree adapter, demo adapter, state machine
+  payments/        provider interface; UroRelay, UroPay Merchant API, Cashfree and demo adapters;
+                   registry (each attempt uses the provider/environment that created it); state machine
   astrology/       chart engine (astronomy-engine, MIT) + compatibility.ts (pair analysis)
   interpretation/  AI boundary: schemas, versioned prompts, validation, OpenAI + demo providers
   reports/         report documents, renderers (personal + pair), SVG charts, PDF
@@ -72,7 +75,8 @@ tests/             Vitest
 2. Create: `POST /api/orders` or `/api/compatibility/orders`: inputs frozen, server-computed
    price snapshot, participants stored as `birth_details` rows 1 (and 2), access token
    issued as an HttpOnly cookie. Changes later = a new order.
-3. `POST /api/orders/:id/checkout` creates (or reuses) a Cashfree order for the stored amount.
+3. `POST /api/orders/:id/checkout` creates (or reuses) a provider order for the stored amount
+   (UroRelay: a UPI QR shown on our order page; the customer then submits the UPI reference).
 4. Payment evidence (signed webhook, or authenticated status lookup on return / by the
    sweeper) goes through `applyPaymentEvidence`: ONE transaction marks paid, creates
    `report_jobs` + an `outbox` row. Then the outbox is dispatched (Inngest or local runner).
@@ -110,7 +114,11 @@ tests/             Vitest
   marketing; no human-review, astrologer-equivalence, fake counts, urgency or guarantees.
 - Access: an order reference or email NEVER grants access; only a 256-bit token (stored
   hashed, expiring). Unauthorised = "not found". Recovery responses identical.
-- **Modes**: demo (simulated), sandbox (real services, Cashfree test), live (real money).
+- **Payments**: a UroRelay payment is paid only when UroPay reports COMPLETED and a signed
+  bank-SMS report matches the UTR and amount; UTR_SUBMITTED / REVIEW_REQUIRED never pay.
+  Anything unproven goes to the owner in /admin. Never add a path that pays on a typed reference.
+- **Database**: production migrations run automatically in `vercel-build` (scripts/deploy-prepare.ts).
+- **Modes**: demo (simulated), sandbox (real services, provider test mode), live (real money).
   Demo and sandbox are refused on rasiastro.com; a hosted site must set `APP_MODE`
   explicitly. `getSiteState()` is the single source for the banner and order buttons;
   each product has its own switch.

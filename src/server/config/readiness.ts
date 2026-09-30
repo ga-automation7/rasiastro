@@ -1,5 +1,5 @@
 import type { Product } from "@/domain/pricing";
-import { PROVIDER_NAMES, cashfreeCredentials, uroPayCredentials } from "../payments/config";
+import { PROVIDER_NAMES, cashfreeCredentials, uroPayCredentials, uroRelayCredentials } from "../payments/config";
 import type { ProviderId } from "../payments/types";
 import { getEnv, isAppModeExplicit, isProductionDeployment, isServerlessRuntime, type Env } from "./env";
 
@@ -112,18 +112,13 @@ export function getConfigChecks(env: Env = getEnv()): ConfigCheck[] {
       env.PAYMENT_ENV === wantedEnv,
       env.APP_MODE === "live" ? "Live mode must use PAYMENT_ENV=production. Use APP_MODE=sandbox with PAYMENT_ENV=test for testing." : "Sandbox mode must use PAYMENT_ENV=test so no real money moves.",
     );
-    add("payment_provider", "Payment provider chosen", Boolean(env.PAYMENT_PROVIDER), "Set PAYMENT_PROVIDER to uropay or cashfree (the provider for new checkouts).");
+    add("payment_provider", "Payment provider chosen", Boolean(env.PAYMENT_PROVIDER), "Set PAYMENT_PROVIDER to urorelay, uropay or cashfree (the provider for new checkouts).");
     const keys = env.APP_MODE === "live" ? "LIVE" : "TEST";
+    if (env.PAYMENT_PROVIDER === "urorelay") {
+      add("urorelay_keys", `${PROVIDER_NAMES.urorelay} API key and secret`, uroRelayCredentials(env) !== null, "Set UROPAY_RELAY_API_KEY and UROPAY_RELAY_API_SECRET (UroRelay dashboard > API Keys).");
+    }
     if (env.PAYMENT_PROVIDER === "uropay") {
-      add(
-        "uropay_product",
-        "UroPay product supported",
-        env.UROPAY_PRODUCT === "merchant_api",
-        env.UROPAY_PRODUCT === "urorelay"
-          ? "UROPAY_PRODUCT=urorelay is not supported: this app integrates the UroPay Merchant API only."
-          : "Set UROPAY_PRODUCT=merchant_api once you have confirmed your UroPay account is the Merchant API (dashboard.uropay.me).",
-      );
-      add("uropay_keys", `${PROVIDER_NAMES.uropay} API keys`, uroPayCredentials(env, wantedEnv) !== null, `Set UROPAY_${keys}_API_KEY and UROPAY_${keys}_API_SECRET.`);
+      add("uropay_keys", `${PROVIDER_NAMES.uropay} Merchant API keys`, uroPayCredentials(env, wantedEnv) !== null, `Set UROPAY_${keys}_API_KEY and UROPAY_${keys}_API_SECRET.`);
     }
     if (env.PAYMENT_PROVIDER === "cashfree") {
       add("cashfree_keys", `${PROVIDER_NAMES.cashfree} API keys`, cashfreeCredentials(env, wantedEnv) !== null, `Set CASHFREE_${keys}_CLIENT_ID and CASHFREE_${keys}_CLIENT_SECRET.`);

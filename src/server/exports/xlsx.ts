@@ -115,7 +115,7 @@ export async function buildOwnerWorkbook(db: SqlExecutor, options: ExportOptions
   const payments = await db.query<Record<string, unknown> & { created_at: Date; verified_at: Date | null }>(
     `select o.id as order_id, o.reference, p.provider, p.environment, p.provider_order_id, p.provider_reference, p.attempt, p.amount_paise,
             p.currency, p.status, p.provider_status, p.provider_payment_id, p.review_reason, p.created_at, p.verified_at,
-            p.last_checked_at, p.check_count, p.last_check_error
+            p.last_checked_at, p.check_count, p.last_check_error, p.submitted_reference, p.confirmed_by
        from orders o join payments p on p.order_id = o.id where ${where} order by o.created_at, p.attempt`,
     params,
   );
@@ -326,6 +326,8 @@ export async function buildOwnerWorkbook(db: SqlExecutor, options: ExportOptions
       { header: "Last checked with provider (IST)", key: "last_checked_at", width: 22, kind: "datetime" },
       { header: "Checks", key: "check_count", width: 8, kind: "number" },
       { header: "Last check problem", key: "last_check_error", width: 20, kind: "text" },
+      { header: "UPI reference given by customer", key: "submitted_reference", width: 18, kind: "text" },
+      { header: "Confirmed or rejected by", key: "confirmed_by", width: 24, kind: "text" },
     ],
     payments.map((p) => ({
       ...p,

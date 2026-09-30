@@ -53,8 +53,9 @@ export default function TermsPage() {
 
       <h2>Payment</h2>
       <p>
-        Payments are processed by our payment partner ({b.paymentPartners}). An order counts as paid only when we have verified the payment directly with that partner; a browser message,
-        screenshot or confirmation text is not enough. If a payment is pending, we wait for confirmation rather than asking you to pay again.
+        Payments are handled by our payment partner ({b.paymentPartners}). An order counts as paid only when the payment has been confirmed through that partner or, for UPI payments, by
+        our bank. A browser message, a screenshot or a reference number on its own is not enough. If a payment is pending or being checked by hand, we wait for confirmation rather than
+        asking you to pay again.
       </p>
 
       <h2>Delivery, refunds and cancellation</h2>

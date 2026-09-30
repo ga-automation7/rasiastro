@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { PaymentBadge } from "@/components/admin/PaymentBadge";
+import { RelayReviewActions } from "@/components/admin/RelayReviewActions.client";
 import { RetryReportButton } from "@/components/admin/RetryReportButton.client";
 import { formatInr } from "@/domain/pricing";
 import { currentAdmin, isAdminEnabled } from "@/server/admin/auth";
-import { getOrderDetail } from "@/server/admin/records";
+import { getOrderDetail, getRelayCreditsForOrder } from "@/server/admin/records";
 import { getDb } from "@/server/db";
 import { PROVIDER_NAMES } from "@/server/payments/config";
 import { isUuid } from "@/server/orders/repository";
@@ -39,8 +40,10 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ ord
   if (!(await currentAdmin())) redirect("/admin/login");
   const { orderId } = await params;
   if (!isUuid(orderId)) notFound();
-  const detail = await getOrderDetail(await getDb(), orderId);
+  const db = await getDb();
+  const detail = await getOrderDetail(db, orderId);
   if (!detail) notFound();
+  const relayCredits = await getRelayCreditsForOrder(db, orderId);
   const { order: o, participants, questions, shared, payments, job } = detail;
 
   return (
@@ -167,6 +170,36 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ ord
         ) : (
           <p className="mt-2 text-sm text-muted">No payment attempt yet: the customer did not reach the payment page.</p>
         )}
+        {payments
+          .filter((p) => p.provider === "urorelay")
+          .map((p) => (
+            <div key={`relay-${String(p.id)}`} className="mt-4 text-sm">
+              <p className="font-semibold text-ink-900">UPI attempt {show(p.attempt)} (UroRelay)</p>
+              <Table
+                rows={[
+                  ["UPI reference given by customer (unverified)", p.submitted_reference],
+                  ["Given at", p.reference_submitted_at],
+                  ["Confirmed or rejected by", p.confirmed_by],
+                ]}
+              />
+              {o.payment_status !== "paid" && ["created", "pending", "needs_review"].includes(String(p.status)) ? (
+                <RelayReviewActions paymentId={String(p.id)} amountLabel={formatInr(Number(p.amount_paise))} submittedReference={(p.submitted_reference as string | null) ?? null} />
+              ) : null}
+            </div>
+          ))}
+        {relayCredits.length ? (
+          <div className="mt-4 text-sm">
+            <p className="font-semibold text-ink-900">Bank credits reported by the Companion app</p>
+            <ul className="mt-1 list-disc pl-5">
+              {relayCredits.map((c, i) => (
+                <li key={i}>
+                  {c.amount_paise === null ? "?" : formatInr(c.amount_paise)} · reference <span className="font-mono">{c.reference_number ?? "?"}</span> · UroPay order{" "}
+                  <span className="font-mono">{c.uropay_order_id ?? "not matched"}</span> · {c.environment} · {show(c.received_at)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </section>
     </div>
   );

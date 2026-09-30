@@ -8,7 +8,7 @@ import { getLanguage, type LanguageCode } from "@/config/languages";
 import { formatInr } from "@/domain/pricing";
 import { currentAdmin, isAdminEnabled } from "@/server/admin/auth";
 import { filtersToQuery, parseFilters } from "@/server/admin/filters";
-import { listOrders, orderSummary } from "@/server/admin/records";
+import { listOrders, listRelayReviews, listUnmatchedCredits, orderSummary } from "@/server/admin/records";
 import { getEnv } from "@/server/config/env";
 import { getDb } from "@/server/db";
 import { PROVIDER_NAMES, activeProviderId, deploymentPaymentEnvironment } from "@/server/payments/config";
@@ -28,7 +28,12 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const filters = parseFilters(params);
   const page = Math.max(1, Number(typeof params.page === "string" ? params.page : 1) || 1);
   const db = await getDb();
-  const [{ rows, total }, summary] = await Promise.all([listOrders(db, filters, page, PAGE_SIZE), orderSummary(db, filters)]);
+  const [{ rows, total }, summary, reviews, credits] = await Promise.all([
+    listOrders(db, filters, page, PAGE_SIZE),
+    orderSummary(db, filters),
+    listRelayReviews(db),
+    listUnmatchedCredits(db),
+  ]);
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const query = filtersToQuery(filters);
   const withPage = (p: number) => `/admin?${[query, `page=${p}`].filter(Boolean).join("&")}`;
@@ -66,6 +71,68 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         ))}
       </dl>
 
+      {reviews.length ? (
+        <section className="card mt-6 border-gold-300 p-4">
+          <h2 className="text-lg font-semibold text-ink-900">UPI payments to check ({reviews.length})</h2>
+          <p className="mt-1 text-sm text-muted">Your bank has not confirmed these automatically. Open each order, check your bank account, then confirm or reject it.</p>
+          <ul className="mt-3 divide-y divide-ivory-300 text-sm">
+            {reviews.map((r) => (
+              <li key={r.payment_id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2">
+                <Link href={`/admin/orders/${r.order_id}`} className="font-mono font-semibold text-ink-800 underline">
+                  {r.reference}
+                </Link>
+                <span>{formatInr(r.amount_paise)}</span>
+                <span className="font-mono">{r.submitted_reference ?? "no reference given"}</span>
+                <span className="text-muted">
+                  {r.review_reason ?? r.provider_status ?? r.status}
+                  {r.reference_submitted_at ? ` · since ${IST.format(r.reference_submitted_at)}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {credits.length ? (
+        <section className="card mt-6 p-4">
+          <h2 className="text-lg font-semibold text-ink-900">UPI credits not attached to a paid order ({credits.length})</h2>
+          <p className="mt-1 text-sm text-muted">Reported by the UroPay Companion app from your bank SMS. Nothing is paid automatically from this list.</p>
+          <div className="overflow-x-auto">
+            <table className="mt-2 w-full min-w-[640px] text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase text-muted">
+                  {["Received (IST)", "Amount", "Bank reference", "UroPay order", "Order claiming it", "Env"].map((h) => (
+                    <th key={h} className="py-1.5 pr-3">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {credits.map((c) => (
+                  <tr key={c.id} className="border-t border-ivory-300">
+                    <td className="py-1.5 pr-3">{IST.format(c.received_at)}</td>
+                    <td className="py-1.5 pr-3">{c.amount_paise === null ? "?" : formatInr(c.amount_paise)}</td>
+                    <td className="py-1.5 pr-3 font-mono">{c.reference_number ?? "?"}</td>
+                    <td className="py-1.5 pr-3 font-mono">{c.uropay_order_id ?? "not matched"}</td>
+                    <td className="py-1.5 pr-3">
+                      {c.claimed_order_id ? (
+                        <Link href={`/admin/orders/${c.claimed_order_id}`} className="font-mono underline">
+                          {c.claimed_by_reference}
+                        </Link>
+                      ) : (
+                        "none"
+                      )}
+                    </td>
+                    <td className="py-1.5 pr-3">{c.environment}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
+
       <form method="get" action="/admin" className="card mt-6 grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 xl:items-end">
         <label className="text-sm">
           <span className="field-label">From</span>
@@ -97,7 +164,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           <span className="field-label">Provider</span>
           <select className="input" name="provider" defaultValue={filters.provider}>
             <option value="all">All</option>
-            <option value="uropay">UroPay</option>
+            <option value="urorelay">UroPay UPI (UroRelay)</option>
+            <option value="uropay">UroPay Merchant API</option>
             <option value="cashfree">Cashfree</option>
             <option value="demo">Demo</option>
             <option value="none">Checkout never opened</option>

@@ -49,16 +49,23 @@ const EnvSchema = z.object({
    * attempts always stay with the provider (and environment) that created them.
    * Demo mode ignores this and simulates payments.
    */
-  PAYMENT_PROVIDER: z.enum(["uropay", "cashfree"]).optional().or(z.literal("").transform(() => undefined)),
+  /**
+   * urorelay = UroRelay (UroPay's phone/SMS UPI product, app.uropay.me).
+   * uropay   = UroPay Merchant API (hosted checkout, dashboard.uropay.me).
+   * cashfree = Cashfree Payments.
+   */
+  PAYMENT_PROVIDER: z.enum(["urorelay", "uropay", "cashfree"]).optional().or(z.literal("").transform(() => undefined)),
   /** test = the provider's test environment (APP_MODE=sandbox); production = real money (APP_MODE=live). */
   PAYMENT_ENV: z.enum(["test", "production"]).optional().or(z.literal("").transform(() => undefined)),
 
   /**
-   * Which UroPay product the account uses. They have different APIs and credentials:
-   * merchant_api = UroPay Merchant API (api.uropai.in), implemented here.
-   * urorelay = UroRelay (api.uropay.me, Android companion app), NOT implemented.
+   * UroRelay has ONE key pair (dashboard > API Keys); TEST or LIVE is chosen per phone in
+   * its dashboard, and every notification says which one. Never used with the Merchant API.
    */
-  UROPAY_PRODUCT: z.enum(["merchant_api", "urorelay"]).optional().or(z.literal("").transform(() => undefined)),
+  UROPAY_RELAY_API_KEY: optionalString,
+  UROPAY_RELAY_API_SECRET: optionalString,
+
+  /** UroPay Merchant API: separate TEST and PRODUCTION key pairs (not used by UroRelay). */
   UROPAY_TEST_API_KEY: optionalString,
   UROPAY_TEST_API_SECRET: optionalString,
   UROPAY_LIVE_API_KEY: optionalString,

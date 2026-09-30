@@ -18,7 +18,7 @@ if (!GEONAMES_DATASETS.includes(dataset as GeonamesDataset)) fail("--dataset mus
 
 try {
   await withDb(async (db) => {
-    const imported = await importGeonames(db, { dataset: dataset as GeonamesDataset, dir: option("dir") });
+    const imported = await importGeonames(db, { dataset: dataset as GeonamesDataset, dir: option("dir"), log: (m) => console.log(m) });
     console.log(`\n✓ Imported ${imported.toLocaleString()} places from GeoNames (${dataset}). Attribution: GeoNames, CC BY 4.0.`);
   });
 } catch (error) {

@@ -89,11 +89,80 @@ export async function getOrderDetail(db: SqlExecutor, id: string) {
     db.query<Record<string, unknown>>(`select how_known, known_duration, hopes, shared_circumstances from compatibility_context where order_id = $1::uuid`, [id]),
     db.query<Record<string, unknown>>(
       `select provider, environment, provider_order_id, provider_reference, attempt, amount_paise, currency, status, provider_status,
-              provider_payment_id, review_reason, created_at, verified_at, last_checked_at, check_count, last_check_error
+              provider_payment_id, review_reason, created_at, verified_at, last_checked_at, check_count, last_check_error,
+              id, submitted_reference, reference_submitted_at, confirmed_by
          from payments where order_id = $1::uuid order by attempt`,
       [id],
     ),
     db.query<Record<string, unknown>>(`select status, attempts, current_step, last_error_code, started_at, finished_at from report_jobs where order_id = $1::uuid`, [id]),
   ]);
   return { order, participants, questions, shared: shared[0] ?? null, payments, job: job[0] ?? null };
+}
+
+/** UroRelay attempts that need the owner: held for review, or waiting on a bank SMS for a while. */
+export interface RelayReviewRow {
+  payment_id: string;
+  order_id: string;
+  reference: string;
+  amount_paise: number;
+  status: string;
+  provider_status: string | null;
+  review_reason: string | null;
+  submitted_reference: string | null;
+  reference_submitted_at: Date | null;
+  created_at: Date;
+}
+
+export async function listRelayReviews(db: SqlExecutor, limit = 50): Promise<RelayReviewRow[]> {
+  return db.query<RelayReviewRow>(
+    `select p.id as payment_id, o.id as order_id, o.reference, p.amount_paise, p.status, p.provider_status, p.review_reason,
+            p.submitted_reference, p.reference_submitted_at, p.created_at
+       from payments p join orders o on o.id = p.order_id
+      where p.provider = 'urorelay' and o.payment_status <> 'paid'
+        and (p.status = 'needs_review'
+             or (p.status = 'pending' and (p.provider_status like '%REVIEW_REQUIRED%' or p.reference_submitted_at < now() - interval '30 minutes')))
+      order by coalesce(p.reference_submitted_at, p.created_at)
+      limit $1::int`,
+    [limit],
+  );
+}
+
+/** Bank credits the Companion app reported that are not attached to a paid order. */
+export interface UnmatchedCreditRow {
+  id: string;
+  environment: string;
+  reference_number: string | null;
+  amount_paise: number | null;
+  uropay_order_id: string | null;
+  merchant_order_id: string | null;
+  received_at: Date;
+  claimed_by_reference: string | null;
+  claimed_order_id: string | null;
+}
+
+export async function listUnmatchedCredits(db: SqlExecutor, limit = 50): Promise<UnmatchedCreditRow[]> {
+  return db.query<UnmatchedCreditRow>(
+    `select c.id, c.environment, c.reference_number, c.amount_paise, c.uropay_order_id, c.merchant_order_id, c.received_at,
+            o.reference as claimed_by_reference, o.id as claimed_order_id
+       from relay_bank_credits c
+       left join payments lp on lp.id = c.payment_id
+       -- An order whose customer typed this bank reference, if any (helps the owner match it).
+       left join payments cp on cp.provider = 'urorelay' and cp.submitted_reference = c.reference_number
+       left join orders o on o.id = coalesce(lp.order_id, cp.order_id)
+      where lp.id is null or lp.status <> 'paid'
+      order by c.received_at desc
+      limit $1::int`,
+    [limit],
+  );
+}
+
+export async function getRelayCreditsForOrder(db: SqlExecutor, orderId: string) {
+  return db.query<{ reference_number: string | null; amount_paise: number | null; uropay_order_id: string | null; environment: string; received_at: Date }>(
+    `select c.reference_number, c.amount_paise, c.uropay_order_id, c.environment, c.received_at
+       from relay_bank_credits c
+      where c.uropay_order_id in (select provider_reference from payments where order_id = $1::uuid and provider = 'urorelay' and provider_reference is not null)
+         or c.reference_number in (select submitted_reference from payments where order_id = $1::uuid and provider = 'urorelay' and submitted_reference is not null)
+      order by c.received_at`,
+    [orderId],
+  );
 }
