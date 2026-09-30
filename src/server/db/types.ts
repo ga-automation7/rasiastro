@@ -4,7 +4,9 @@
  *
  * Conventions that keep both drivers behaving identically:
  * - Parameters are only strings, numbers, booleans or null. Cast in SQL
- *   (`$1::uuid`, `$2::jsonb`, `$3::timestamptz`) instead of relying on driver inference.
+ *   (`$1::uuid`, `$2::text::jsonb`, `$3::timestamptz`) instead of relying on driver inference.
+ *   JSON goes in as TEXT (`jsonParam(v)` with `$n::text::jsonb`): postgres.js would
+ *   otherwise encode an already-stringified value a second time for a jsonb parameter.
  * - Select `date`/`time` columns as `::text`, and counts as `::int`.
  * - `timestamptz` columns come back as JS Date objects; `jsonb` as parsed objects.
  */

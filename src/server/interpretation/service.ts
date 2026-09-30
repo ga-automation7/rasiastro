@@ -138,7 +138,7 @@ async function generateStored<T>(db: SqlExecutor, spec: GenerationSpec<T>): Prom
         await usage("success", generated, null);
         await db.query(
           `insert into report_parts (order_id, part, content, schema_version, prompt_version, provider, model, is_demo, input_tokens, output_tokens, latency_ms)
-           values ($1::uuid, $2, $3::jsonb, $4, $5, $6, $7, $8, $9::int, $10::int, $11::int)
+           values ($1::uuid, $2, $3::text::jsonb, $4, $5, $6, $7, $8, $9::int, $10::int, $11::int)
            on conflict (order_id, part) do nothing`,
           [spec.orderId, spec.part, jsonParam(content), spec.schemaVersion, spec.promptVersion, provider.id, provider.model, provider.isDemo, generated.inputTokens, generated.outputTokens, generated.latencyMs],
         );

@@ -149,7 +149,7 @@ export async function insertOrder(tx: SqlExecutor, order: NewOrder): Promise<str
     `insert into orders (reference, mode, product, compatibility_category, tradition, report_language, package_code, pricing_version,
         currency, base_amount_paise, addon_amount_paise, total_amount_paise, price_snapshot, report_email, payer_phone,
         consent_processing_at, consent_version, adult_confirmed_at, third_party_permission_at, delete_after)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::int, $11::int, $12::int, $13::jsonb, $14, $15, now(), $16, now(),
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::int, $11::int, $12::int, $13::text::jsonb, $14, $15, now(), $16, now(),
         case when $17::boolean then now() else null end, now() + ($18::int * interval '1 day'))
      returning id`,
     [

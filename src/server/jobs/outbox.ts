@@ -18,7 +18,7 @@ export interface OutboxMessage {
 
 export async function enqueueOutbox(tx: SqlExecutor, topic: OutboxTopic, orderId: string, dedupeKey: string, payload: Record<string, unknown> = {}): Promise<void> {
   await tx.query(
-    `insert into outbox (topic, order_id, dedupe_key, payload) values ($1, $2::uuid, $3, $4::jsonb)
+    `insert into outbox (topic, order_id, dedupe_key, payload) values ($1, $2::uuid, $3, $4::text::jsonb)
      on conflict (dedupe_key) do nothing`,
     [topic, orderId, dedupeKey, jsonParam(payload)],
   );

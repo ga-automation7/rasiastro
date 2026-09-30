@@ -139,7 +139,7 @@ export async function saveCheckoutSession(
 ): Promise<void> {
   await db.query(
     `update payments set payment_session_id = coalesce($2, payment_session_id), checkout_url = coalesce($3, checkout_url),
-            provider_reference = coalesce(provider_reference, $4), checkout_data = coalesce($5::jsonb, checkout_data),
+            provider_reference = coalesce(provider_reference, $4), checkout_data = coalesce($5::text::jsonb, checkout_data),
             provider_status = case when provider_status = 'CREATE_UNCONFIRMED' then null else provider_status end,
             last_check_error = null, updated_at = now()
       where id = $1::uuid`,

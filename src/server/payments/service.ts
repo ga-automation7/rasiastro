@@ -521,7 +521,7 @@ export async function recordPaymentEvent(
 ): Promise<boolean> {
   const rows = await db.query<{ id: string }>(
     `insert into payment_events (provider, environment, dedupe_key, event_type, provider_order_id, provider_payment_id, payment_status, amount_paise, currency, signature_verified, payload)
-     values ($1, $2, $3, $4, $5, $6, $7, $8::int, $9, $10, $11::jsonb)
+     values ($1, $2, $3, $4, $5, $6, $7, $8::int, $9, $10, $11::text::jsonb)
      on conflict (dedupe_key) do nothing
      returning id`,
     [

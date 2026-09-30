@@ -146,7 +146,7 @@ async function calculateChart(db: SqlExecutor, order: Order, birth: StoredBirthD
   const result = await provider.calculate(chartInputFor(order, birth, referenceDate(order)));
   await db.query(
     `insert into charts (order_id, participant, provider, provider_version, calculation_version, conventions, settings, data, is_fixture)
-     values ($1::uuid, $2::int, $3, $4, $5, $6::jsonb, $7::jsonb, $8::jsonb, false) on conflict (order_id, participant) do nothing`,
+     values ($1::uuid, $2::int, $3, $4, $5, $6::text::jsonb, $7::text::jsonb, $8::text::jsonb, false) on conflict (order_id, participant) do nothing`,
     [order.id, birth.participant, result.provider, result.providerVersion, result.calculationVersion, jsonParam(result.chart.conventions), jsonParam(result.settings), jsonParam(result.chart)],
   );
   return true;
@@ -250,7 +250,7 @@ export async function runGenerationStep(orderId: string, step: GenerationStep): 
       const [a, b] = await Promise.all([loadChart(db, orderId, 1), loadChart(db, orderId, 2)]);
       const analysis = analysePair(order.compatibilityCategory!, a!.data, b!.data);
       await db.query(
-        `insert into compatibility_analyses (order_id, category, tradition, calculation_version, data) values ($1::uuid, $2, $3, $4, $5::jsonb)
+        `insert into compatibility_analyses (order_id, category, tradition, calculation_version, data) values ($1::uuid, $2, $3, $4, $5::text::jsonb)
          on conflict (order_id) do nothing`,
         [orderId, order.compatibilityCategory, order.tradition, PAIR_CALCULATION_VERSION, jsonParam(analysis)],
       );
@@ -298,7 +298,7 @@ export async function runGenerationStep(orderId: string, step: GenerationStep): 
       if (!meta[0]) throw new Error("Report parts missing");
       const doc: AnyReportDocument = pair ? await buildPairDocument(db, loaded, meta[0]) : await buildPersonalDocument(db, loaded, meta[0]);
       await db.query(
-        `insert into reports (order_id, schema_version, prompt_version, language, content) values ($1::uuid, $2, $3, $4, $5::jsonb) on conflict (order_id) do nothing`,
+        `insert into reports (order_id, schema_version, prompt_version, language, content) values ($1::uuid, $2, $3, $4, $5::text::jsonb) on conflict (order_id) do nothing`,
         [orderId, doc.schemaVersion, meta[0].prompt_version, order.language, jsonParam(doc)],
       );
       return { step, skipped: false };
