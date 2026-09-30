@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { ART } from "@/config/art";
-import { COPY } from "@/content/site-copy";
+import { COPY, HOME, PRICE } from "@/content/site-copy";
 import { CompatibilityTeaser } from "../compatibility/CompatibilityTeaser.client";
 
 /**
@@ -14,6 +14,7 @@ import { CompatibilityTeaser } from "../compatibility/CompatibilityTeaser.client
 export function CompatibilitySection({ available, pausedMessage }: { available: boolean; pausedMessage: string | null }) {
   const bg = ART.compatibility.background;
   const c = COPY.compatibility;
+  const h = HOME.compatibility;
   return (
     <section id="compatibility" aria-labelledby="compatibility-heading" className="relative scroll-mt-16 overflow-hidden text-ivory-100" style={{ backgroundColor: ART.compatibility.night }}>
       <div
@@ -24,13 +25,25 @@ export function CompatibilitySection({ available, pausedMessage }: { available: 
         <Image src={bg.src} alt="" fill sizes="100vw" quality={75} loading="lazy" className="object-cover" style={{ objectPosition: bg.focal }} />
       </div>
       <div className="relative mx-auto max-w-2xl px-(--gutter) pb-10 pt-16 text-center sm:pt-20 lg:pb-[clamp(9rem,13vw,13rem)] lg:pt-[clamp(5rem,7vw,7rem)]">
-        <div data-reveal>
-          <p className="eyebrow !text-gold-300">{c.eyebrow}</p>
-          <h2 id="compatibility-heading" className="h-section mt-3 text-ivory-50">
-            <span className="block">{c.headline[0]}</span>
-            <span className="block text-gold-300">{c.headline[1]}</span>
+        <div>
+          <p className="eyebrow !text-gold-300" data-reveal>
+            {h.eyebrow}
+          </p>
+          <h2 id="compatibility-heading" className="h-section mt-3 text-ivory-50" data-reveal="mask">
+            <span className="mask-line">
+              <span>{h.headline[0]}</span>
+            </span>
+            <span className="mask-line" style={{ "--line": 1 } as React.CSSProperties}>
+              <span className="text-gold-300">{h.headline[1]}</span>
+            </span>
           </h2>
-          <p className="mx-auto mt-5 max-w-xl text-[1.06rem] leading-relaxed text-ivory-200">{c.supporting}</p>
+          <p className="mx-auto mt-5 max-w-xl text-[1.06rem] leading-relaxed text-ivory-200" data-reveal>
+            {h.body}
+          </p>
+          <p className="mt-7 flex items-baseline justify-center gap-3" data-reveal>
+            <span className="font-display text-5xl text-ivory-50">{PRICE.compatibility}</span>
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-200">{h.label}</span>
+          </p>
         </div>
         <div className="mx-auto mt-2 max-w-xl text-left" data-reveal>
           <CompatibilityTeaser available={available} pausedMessage={pausedMessage} />
@@ -47,6 +60,7 @@ export function CompatibilitySection({ available, pausedMessage }: { available: 
             ))}
           </ul>
           <p className="mt-4 text-sm text-ivory-300">{c.limits}</p>
+          <p className="mt-2 text-sm font-medium text-gold-200">{h.responsible}</p>
         </div>
       </div>
       <div className="relative lg:hidden" style={{ aspectRatio: `${bg.width} / ${bg.height}` }} aria-hidden="true">

@@ -1,8 +1,7 @@
 import { CompatibilitySection } from "@/components/landing/CompatibilitySection";
 import { Faq } from "@/components/landing/Faq";
 import { Hero } from "@/components/landing/Hero";
-import { Pricing } from "@/components/landing/Pricing";
-import { CampaignBand, PersonalSection, RegionalSection, ReportSection, TechnologySection, TraditionsSection } from "@/components/landing/Stories";
+import { EngineSection, IncludesSection, LanguagesSection, PriceSection, ReceiveSection, ScrollProgress, TraditionsSplit, TransparencySection } from "@/components/landing/Premium";
 import { getEnv } from "@/server/config/env";
 import { getSiteState } from "@/server/config/readiness";
 
@@ -17,15 +16,16 @@ export default function HomePage() {
   const closedMessage = state.kind === "closed" ? state.banner?.text ?? null : null;
   return (
     <>
+      <ScrollProgress />
       <Hero personalAvailable={personal.available} compatibilityAvailable={compatibility.available} closedMessage={closedMessage} />
-      <CampaignBand />
-      <PersonalSection available={personal.available} />
-      <TraditionsSection />
-      <RegionalSection />
+      <EngineSection />
+      <ReceiveSection available={personal.available} />
+      <IncludesSection />
+      <PriceSection personalAvailable={personal.available} />
       <CompatibilitySection available={compatibility.available} pausedMessage={compatibility.message} />
-      <TechnologySection />
-      <ReportSection />
-      <Pricing personalAvailable={personal.available} compatibilityAvailable={compatibility.available} />
+      <LanguagesSection />
+      <TraditionsSplit />
+      <TransparencySection />
       <Faq typicalMinutes={env.DELIVERY_TYPICAL_MINUTES} maxHours={env.DELIVERY_MAX_HOURS} />
     </>
   );

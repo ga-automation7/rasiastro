@@ -9,7 +9,8 @@ export const SITE = {
 } as const;
 
 export const NAV_LINKS = [
-  { href: "/#personal", label: "Personal report" },
+  { href: "/#how-it-works", label: "How it works" },
+  { href: "/#report", label: "Your report" },
   { href: "/#compatibility", label: "Compatibility" },
   { href: "/#pricing", label: "Pricing" },
   { href: "/#faq", label: "FAQ" },

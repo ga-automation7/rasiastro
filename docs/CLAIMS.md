@@ -3,7 +3,7 @@
 Every concrete thing the website promises must be something the product actually
 produces. Marketing copy lives in `src/content/site-copy.ts`, the FAQ in
 `src/components/landing/Faq.tsx`, and the policies in `src/app/*/page.tsx`.
-Check this list before adding or changing a claim. Reviewed 29 September 2026.
+Check this list before adding or changing a claim. Reviewed 30 September 2026.
 
 ## Claims made, and where they are produced
 
@@ -27,6 +27,9 @@ Check this list before adding or changing a claim. Reviewed 29 September 2026.
 | No compatibility score or percentage; no directives to marry/separate/hire | analysis has no score; `pair-validate.ts` rejects scores; prompt rules |
 | Names, email, phone and birthplace not sent to the AI | `input.ts`, `pair-input.ts` (`maskNames`); tests |
 | Checked automatically for structure, completeness and language | `validate.ts`, `pair-validate.ts` |
+| "Frontier AI", "advanced AI" (homepage hero, engine section, trust line) | Production `OPENAI_MODEL` is a current flagship generation model. The model and provider are never named. **Re-check this wording whenever OPENAI_MODEL changes**; drop "frontier" if a smaller or older model is used. |
+| Homepage report previews | `src/server/reports/preview.ts` quotes the public SAMPLE report (`sample.ts`): a fictional person, a genuinely calculated chart, hand-written illustrative text, labelled as a sample on the page |
+| "No subscription · Downloadable PDF · No account required"; recovery by email | one-off orders; `/api/orders/:id/pdf`; access tokens; `/recover` |
 | Reports prepared in the background, usually within `DELIVERY_TYPICAL_MINUTES` | Inngest pipeline; value is a setting to be measured in sandbox |
 | Retries never cost extra; reopening never pays again | idempotent pipeline; access by link |
 | Retention periods stated in the Privacy Policy | `RETENTION_*` settings, `src/server/ops/retention.ts` (daily job) |
@@ -42,4 +45,6 @@ Check this list before adding or changing a claim. Reviewed 29 September 2026.
 - "Instant" delivery.
 - Bengali, Marathi, Gujarati or any other language.
 - A live consultation with the question add-on.
-- Public sample reports (the sample-report area was removed on the owner's instruction).
+- A downloadable sample PDF (the homepage shows sample pages only; the owner removed the old sample-report area and later asked for these previews).
+- "One of the world's most capable AI models", or any ranking of the AI (not verifiable).
+- Price comparisons such as "less than a coffee".

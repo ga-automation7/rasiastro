@@ -17,13 +17,116 @@ export const PRICE = {
 } as const;
 
 export const CTA = {
-  personal: `Explore my chart · ${PRICE.personal}`,
-  compatibility: `Explore our connection · ${PRICE.compatibility}`,
+  personal: `Get my personal report · ${PRICE.personal}`,
+  compatibility: `Check compatibility · ${PRICE.compatibility}`,
+} as const;
+
+/**
+ * The homepage, top to bottom. "Frontier AI" and "advanced AI" describe the production
+ * model tier (see docs/CLAIMS.md); the model and provider are never named here.
+ */
+export const HOME = {
+  hero: {
+    eyebrow: "Indian + Western astrology · AI interpreted",
+    headline: ["Your birth chart.", "Decoded for you."],
+    supporting:
+      "Enter your birth details and receive a beautifully structured personal reading combining traditional astrological systems with advanced AI interpretation.",
+    trust: ["Traditional astrology", "Precise chart calculation", "Frontier AI interpretation"],
+    primary: CTA.personal,
+    secondary: CTA.compatibility,
+    reassurance: ["No subscription", "Downloadable PDF", "No account required"],
+    questions: `Personal report with 3 questions · ${PRICE.personalWithQuestions}`,
+    badge: "Traditional astrology. Interpreted with frontier AI.",
+  },
+  engine: {
+    eyebrow: "The interpretation engine",
+    headline: ["Ancient systems.", "Modern intelligence."],
+    body: [
+      "Your chart begins with your birth data: date, time and place. Planetary positions and astrological calculations form the foundation.",
+      "Rasi Astro then uses advanced AI to study the relationships, patterns and traditional interpretations within your chart, and transforms them into a structured personal reading you can actually understand.",
+    ],
+    badge: ["Tradition", "Computation", "Frontier AI"],
+    steps: [
+      { n: "01", title: "Calculate", body: "Your birth details are converted into the astronomical and astrological positions used by the selected system." },
+      { n: "02", title: "Interpret", body: "Traditional rules, planetary relationships and chart patterns are analysed together instead of as isolated horoscope statements." },
+      { n: "03", title: "Compose", body: "Advanced AI turns the analysis into a structured, readable and personalised report." },
+    ],
+    poweredBy: "Powered by advanced frontier AI",
+    guardrail: "The AI interprets your calculated chart. It never invents planetary positions.",
+  },
+  receive: {
+    eyebrow: "See what you receive",
+    headline: ["Not a horoscope.", "A report about you."],
+    supporting: "Your reading is organised into a beautifully designed PDF you can save, revisit and keep.",
+    cta: `See your report · ${PRICE.personal}`,
+    note: "Generated specifically from your birth details.",
+    sampleNote: "Sample pages for a fictional person. The chart is genuinely calculated; the reading text is illustrative.",
+  },
+  includes: {
+    eyebrow: `What ${PRICE.personal} includes`,
+    headline: "More than a daily horoscope.",
+    cards: [
+      { glyph: "chart", title: "Your chart", body: "Birth chart calculations based on your date, time and place of birth." },
+      { glyph: "nakshatra", title: "Your Nakshatra", body: "Understand the lunar constellation traditionally associated with your birth." },
+      { glyph: "lagna", title: "Your Rasi & Lagna", body: "See the major foundations used in Indian astrological interpretation." },
+      { glyph: "patterns", title: "Personality & patterns", body: "A structured interpretation of recurring strengths, tendencies and themes." },
+      { glyph: "career", title: "Career & direction", body: "Explore traditional astrological perspectives related to work, ambition and decision making." },
+      { glyph: "relationships", title: "Relationships", body: "Understand chart themes traditionally associated with connection, communication and partnership." },
+      { glyph: "periods", title: "Life periods", body: "Explore significant planetary periods and how astrology traditionally interprets their themes." },
+      { glyph: "summary", title: "Personal summary", body: "A final synthesis designed to make the entire reading easier to understand." },
+    ],
+    note: "Nakshatra, Rasi and Lagna belong to Indian reports. A Western report covers your Sun, Moon and Rising signs, aspects and houses instead.",
+  },
+  pricing: {
+    eyebrow: "One payment",
+    headline: "Your complete personal reading.",
+    points: ["No subscription.", "No account required.", "Your PDF is yours to keep."],
+    cta: `Generate my report · ${PRICE.personal}`,
+    upsellQuestion: "Want to ask something specific?",
+    upsell: `Add 3 personal questions for ${PRICE.questions}.`,
+    total: PRICE.personalWithQuestions,
+    upsellCta: `Add my questions · ${PRICE.personalWithQuestions}`,
+    footnote: "One tradition per purchase, Indian or Western. Questions can be added to personal reports only.",
+  },
+  compatibility: {
+    eyebrow: "Compatibility",
+    headline: ["Two charts.", "One deeper comparison."],
+    body: "Compare two birth charts across relationship, marriage, friendship, family, business or professional compatibility.",
+    label: "Compatibility report",
+    responsible: "Designed to explore astrological patterns, not to make important life decisions for you.",
+  },
+  languages: {
+    eyebrow: "Six report languages",
+    headline: "Astrology should speak your language.",
+    body: "Explore your reading in the language that feels most natural to you.",
+    note: "Every report, Indian or Western, can be written in any of these languages. Indian reports also include Tamil, Kannada and Hindi (Janma Kundali) regional perspectives.",
+  },
+  traditions: {
+    eyebrow: "Two traditions",
+    center: "Your birth data",
+    centerNote: "Choose the system that resonates with you.",
+    indian: { title: "Indian astrology", body: "Explore traditional chart interpretation built around concepts such as Rasi, Nakshatra, Lagna and planetary periods." },
+    western: { title: "Western astrology", body: "Explore your natal chart through planetary placements, houses, aspects and Western astrological interpretation." },
+  },
+  transparency: {
+    eyebrow: "Built with transparency",
+    points: [
+      { title: "Real calculations", body: "Chart positions are calculated from the birth information you provide." },
+      { title: "AI interpretation", body: "AI helps transform complex astrological information into structured, human readable reports." },
+      { title: "Your privacy", body: "Your personal information is used to deliver your report, as described in our privacy policy." },
+      { title: "No subscription", body: "Pay for the report you want. No recurring membership." },
+    ],
+  },
+  recovery: {
+    title: "Lost your link? Your report is still yours.",
+    body: "Enter the email address you ordered with and we will send fresh private links to your reports. No account or password needed.",
+    cta: "Find my report",
+  },
 } as const;
 
 export const COPY = {
   meta: {
-    title: "Rasi Astro · The sky at your birth, the story it holds",
+    title: "Rasi Astro · Your birth chart, decoded for you",
     description: `Personal birth chart reports (${PRICE.personal}) and compatibility reports for two (${PRICE.compatibility}), in Indian or Western astrology. Calculated with precision, interpreted by AI, written in Tamil, English, Hindi, Telugu, Kannada or Malayalam. PDF included. No account needed.`,
   },
   campaign: ["Centuries of tradition.", "Calculated by machines.", "Interpreted for you."],

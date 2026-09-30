@@ -258,6 +258,110 @@ html.js [data-reveal].is-visible .ornament-line { stroke-dashoffset: 0; }
   html.js [data-reveal] .ornament-line { stroke-dashoffset: 0; transition: none; }
 }
 
+/*
+ * Premium homepage motion. Everything is CSS: no animation library on the homepage.
+ * - Reveals extend the [data-reveal] system above (hidden only under html.js).
+ * - The hero intro uses short keyframes that end fully visible and never block input.
+ * - Scroll-linked effects (progress line, hero drift) are progressive enhancements for
+ *   browsers with scroll-driven animations; others simply do without them.
+ * - prefers-reduced-motion switches all of it off (see the base layer rule).
+ */
+:root {
+  --color-midnight: #070c17;
+  --night-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .95 0 0 0 0 .85 0 0 0 .045 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Masked line reveal for headings: each line rises from behind its own edge. */
+.mask-line {
+  display: block;
+  overflow: hidden;
+  /* Room for ascenders and descenders so the mask never clips a glyph. */
+  padding-block: 0.12em;
+  margin-block: -0.12em;
+}
+.mask-line > span { display: block; }
+html.js [data-reveal="mask"] { opacity: 1; transform: none; }
+html.js [data-reveal="mask"] .mask-line > span {
+  transform: translateY(108%);
+  transition: transform 900ms var(--ease-soft);
+  transition-delay: calc(var(--reveal-delay, 0ms) + var(--line, 0) * 110ms);
+}
+html.js [data-reveal="mask"].is-visible .mask-line > span { transform: none; }
+
+/* Gentle scale-in for cards and document pages. */
+html.js [data-reveal="rise"] { transform: translateY(26px) scale(0.975); }
+html.js [data-reveal="rise"].is-visible { transform: none; }
+
+/* Lines that draw themselves once (SVG paths with pathLength="1"). */
+html.js [data-reveal] .draw-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 1600ms var(--ease-soft) calc(var(--reveal-delay, 0ms) + 150ms);
+}
+html.js [data-reveal].is-visible .draw-line { stroke-dashoffset: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  html.js [data-reveal="mask"] .mask-line > span,
+  html.js [data-reveal="rise"] { transform: none; transition: none; }
+  html.js [data-reveal] .draw-line { stroke-dashoffset: 0; transition: none; }
+}
+
+/* Hero intro: veil lifts, eyebrow, headline lines, copy, actions. About 1.2 s in total. */
+@keyframes intro-veil { from { opacity: 1; } to { opacity: 0; } }
+@keyframes intro-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes intro-line { from { transform: translateY(108%); } to { transform: none; } }
+@keyframes intro-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes orbit-turn { to { transform: rotate(360deg); } }
+@keyframes star-glint { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.9; } }
+
+/* Rests invisible: if animations never run, the hero is simply shown. */
+.intro-veil { opacity: 0; animation: intro-veil 1100ms var(--ease-soft) both; pointer-events: none; }
+.intro-rise { animation: intro-rise 700ms var(--ease-soft) both; animation-delay: var(--intro-delay, 0ms); }
+.intro-fade { animation: intro-fade 1600ms var(--ease-soft) both; animation-delay: var(--intro-delay, 0ms); }
+.intro-line > span { animation: intro-line 950ms var(--ease-soft) both; animation-delay: var(--intro-delay, 0ms); }
+.orbit-slow { transform-origin: 50% 50%; transform-box: fill-box; animation: orbit-turn 420s linear infinite; }
+.orbit-slower { transform-origin: 50% 50%; transform-box: fill-box; animation: orbit-turn 900s linear infinite reverse; }
+.star-glint { animation: star-glint 6s ease-in-out infinite; animation-delay: var(--glint-delay, 0s); }
+
+/* A hairline of gold that follows reading progress, almost invisible at the top. */
+.scroll-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 60;
+  height: 2px;
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  background: linear-gradient(90deg, var(--color-gold-600), var(--color-gold-300) 70%, var(--color-ivory-50));
+  opacity: 0;
+  pointer-events: none;
+}
+@supports (animation-timeline: scroll()) {
+  @keyframes progress-grow { to { transform: scaleX(1); } }
+  @keyframes progress-show { to { opacity: 0.85; } }
+  .scroll-progress {
+    animation: progress-grow linear both, progress-show linear both;
+    animation-timeline: scroll(root), scroll(root);
+    animation-range: 0% 100%, 0px 240px;
+  }
+  /* The hero's celestial drawing drifts a little slower than the page. */
+  @keyframes hero-drift { to { transform: translateY(12%); opacity: 0.35; } }
+  .hero-drift { animation: hero-drift linear both; animation-timeline: view(); animation-range: exit 0% exit 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scroll-progress, .hero-drift { animation: none !important; }
+  .orbit-slow, .orbit-slower, .star-glint { animation: none; }
+}
+
+/* Paper pages in the report preview. */
+.doc-page {
+  aspect-ratio: 1 / 1.414;
+  background: #fffdf8;
+  border-radius: 6px;
+  box-shadow: 0 1px 0 rgb(10 21 35 / 0.04), 0 22px 45px -24px rgb(10 21 35 / 0.45), 0 6px 14px -8px rgb(10 21 35 / 0.18);
+  color: #131b3b;
+  overflow: hidden;
+}
+
 /* Web report: same markup as the PDF, coloured for screen. */
 .report-web {
   --r-ink: #131b3b; --r-heading: #1c2552; --r-muted: #5c6079; --r-muted-ink: #3b3f58; --r-rule: #e4d4b3;
