@@ -223,6 +223,22 @@ export class UroRelayProvider implements PaymentProvider {
     return { ...base, status: "paid", providerPaymentId: facts?.submittedReference ?? null, amountPaise: null, providerStatus: "order:COMPLETED", holdForReview: "no_bank_sms" };
   }
 
+  /**
+   * Read-only credential check for deployments: asks UroPay to update an order that
+   * cannot exist. "Not found" proves the key and secret are accepted; nothing changes.
+   */
+  async checkCredentials(): Promise<"accepted" | "rejected" | "unknown"> {
+    try {
+      await this.request("PATCH", "/order/update", { uroPayOrderId: "rasi-astro-credential-check", referenceNumber: "000000000000" });
+      return "unknown";
+    } catch (error) {
+      const status = error instanceof PaymentProviderError ? error.httpStatus : null;
+      if (status === 401 || status === 403) return "rejected";
+      if (status === 404 || status === 400) return "accepted";
+      return "unknown";
+    }
+  }
+
   /** Verifies X-Uropay-Signature with this account's secret. */
   verifyWebhook(payload: Record<string, unknown>, signature: string | null): boolean {
     return verifyUroRelaySignature(payload, this.config.apiSecret, signature);

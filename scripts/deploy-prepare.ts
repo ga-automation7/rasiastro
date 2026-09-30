@@ -105,10 +105,35 @@ async function reportConfiguration(): Promise<void> {
       const { data, error } = await new Resend(env.RESEND_API_KEY).domains.list();
       const fromDomain = env.EMAIL_FROM.match(/@([^>\s]+)/)?.[1];
       const domain = data?.data.find((d) => d.name === fromDomain);
-      console.log(error ? "[deploy]   MISSING Resend rejected the API key." : domain ? `[deploy]   ${domain.status === "verified" ? "ok     " : "MISSING"} Resend domain ${domain.name}: ${domain.status}` : `[deploy]   MISSING Resend has no domain "${fromDomain}"`);
+      if (error?.name === "restricted_api_key") {
+        // A sending-only key (the recommended kind) may send but not list domains.
+        console.log("[deploy]   ok      Resend key accepted (sending-only key, so the domain status is not listed; check Resend > Domains shows Verified)");
+      } else {
+        console.log(
+          error
+            ? `[deploy]   MISSING Resend rejected the API key (${error.name}).`
+            : domain
+              ? `[deploy]   ${domain.status === "verified" ? "ok     " : "MISSING"} Resend domain ${domain.name}: ${domain.status}`
+              : `[deploy]   MISSING Resend has no domain "${fromDomain}"`,
+        );
+      }
     } catch (error) {
       console.log(`[deploy]   UNKNOWN could not check Resend (${(error as Error).name}).`);
     }
+  }
+  const { uroRelayCredentials } = await import("../src/server/payments/config");
+  const relay = uroRelayCredentials(env);
+  if (relay && (env.PAYMENT_ENV === "test" || env.PAYMENT_ENV === "production")) {
+    const { UroRelayProvider } = await import("../src/server/payments/urorelay");
+    const provider = new UroRelayProvider({ environment: env.PAYMENT_ENV, ...relay, lookup: async () => null });
+    const result = await provider.checkCredentials();
+    console.log(
+      result === "accepted"
+        ? "[deploy]   ok      UroRelay accepted the API key and secret"
+        : result === "rejected"
+          ? "[deploy]   MISSING UroRelay rejected the API key or secret (check UROPAY_RELAY_API_KEY / UROPAY_RELAY_API_SECRET)"
+          : "[deploy]   UNKNOWN could not confirm the UroRelay key and secret",
+    );
   }
   if (env.APP_MODE === "live" && modelOk === false) {
     throw new Error(`OPENAI_MODEL "${env.OPENAI_MODEL}" is not usable, so paid reports could not be written. Fix OPENAI_MODEL before going live.`);
