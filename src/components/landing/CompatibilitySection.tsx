@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { ART } from "@/config/art";
 import { COPY, HOME, PRICE } from "@/content/site-copy";
 import { CompatibilityTeaser } from "../compatibility/CompatibilityTeaser.client";
@@ -50,8 +51,7 @@ export function CompatibilitySection({ available, pausedMessage }: { available: 
           <p className="mt-4 text-sm font-medium text-ivory-200">{c.line}</p>
         </div>
         <div className="mx-auto mt-10 max-w-xl border-t border-ivory-100/15 pt-8 text-left" data-reveal>
-          <p className="font-display text-xl text-ivory-50">{c.price}</p>
-          <p className="mt-2 text-[0.97rem] leading-relaxed text-ivory-200">{c.how}</p>
+          <p className="text-[0.97rem] leading-relaxed text-ivory-200">{c.how}</p>
           <ul className="mt-4 flex flex-wrap gap-2">
             {c.outputs.map((o) => (
               <li key={o} className="rounded-full border border-gold-300/40 px-3 py-1 text-sm text-gold-200">
@@ -60,7 +60,11 @@ export function CompatibilitySection({ available, pausedMessage }: { available: 
             ))}
           </ul>
           <p className="mt-4 text-sm text-ivory-300">{c.limits}</p>
-          <p className="mt-2 text-sm font-medium text-gold-200">{h.responsible}</p>
+          <p className="mt-3 text-sm">
+            <Link href="/compatibility-report" className="font-semibold text-gold-200 underline decoration-gold-300/40 underline-offset-4 hover:text-gold-100">
+              How the compatibility report works
+            </Link>
+          </p>
         </div>
       </div>
       <div className="relative lg:hidden" style={{ aspectRatio: `${bg.width} / ${bg.height}` }} aria-hidden="true">

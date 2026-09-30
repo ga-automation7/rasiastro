@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage, OperatorBlock, businessDetails } from "@/components/legal/LegalPage";
 
-export const metadata: Metadata = { title: "Privacy Policy" };
+export const metadata: Metadata = { title: "Privacy Policy", description: "What Rasi Astro collects to prepare your astrology report, why, who helps process it, how long it is kept, and your rights.", alternates: { canonical: "/privacy" } };
 export const dynamic = "force-dynamic";
 
 export default function PrivacyPage() {

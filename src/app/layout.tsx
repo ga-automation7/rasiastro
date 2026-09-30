@@ -22,9 +22,9 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: SITE.name,
       type: "website",
       locale: "en_IN",
-      images: [{ url: "/art/og-rasi-astro.jpg", width: 1200, height: 630, alt: "Rasi Astro" }],
+      images: [{ url: "/art/og-card.jpg", width: 1200, height: 630, alt: "Rasi Astro" }],
     },
-    twitter: { card: "summary_large_image", title: SITE.title, description: SITE.description, images: ["/art/og-rasi-astro.jpg"] },
+    twitter: { card: "summary_large_image", title: SITE.title, description: SITE.description, images: ["/art/og-card.jpg"] },
     // Only the real shop is indexed; demo, sandbox and not-yet-open sites are not.
     robots: state.kind === "live" ? { index: true, follow: true } : { index: false, follow: false },
   };

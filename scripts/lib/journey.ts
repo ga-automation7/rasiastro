@@ -30,46 +30,21 @@ async function clickText(page: Page, text: string) {
   await page.locator(`::-p-text(${text})`).click();
 }
 
-async function selectByLabel(page: Page, label: string, value: string) {
-  const id = await page.evaluate((l) => {
-    const el = [...document.querySelectorAll("label")].find((x) => x.textContent?.trim() === l);
-    return el?.getAttribute("for") ?? null;
-  }, label);
-  if (!id) throw new Error(`No label ${label}`);
-  await page.select(`[id="${id}"]`, value);
-}
-
 async function typeByLabel(page: Page, label: string, value: string) {
   const id = await page.evaluate((l) => [...document.querySelectorAll("label")].find((x) => x.textContent?.trim().startsWith(l))?.getAttribute("for") ?? null, label);
   if (!id) throw new Error(`No label ${label}`);
   await page.type(`[id="${id}"]`, value);
 }
 
-async function fillBirth(page: Page, opts: { nameLabel: string; name: string; day: string; month: string; year: string; certaintyName: string; certainty: string; place: string }) {
-  await typeByLabel(page, opts.nameLabel, opts.name);
-  await selectByLabel(page, "Day", opts.day);
-  await selectByLabel(page, "Month", opts.month);
-  await selectByLabel(page, "Year", opts.year);
-  await page.click(`input[name="${opts.certaintyName}"][value=${opts.certainty}]`);
-  if (opts.certainty !== "unknown") {
-    await selectByLabel(page, "Hour", "6");
-    await selectByLabel(page, "Minute", "30");
-    await selectByLabel(page, "AM / PM", "AM");
-    if (opts.certainty === "approximate") await selectByLabel(page, "How far off could it be?", "60");
-  }
-  await typeByLabel(page, "Birthplace (city or town)", opts.place);
-  await page.waitForSelector("button.card", { timeout: 15_000 });
-  await page.locator("button.card").click();
-}
-
-/** The personal birth step: typed name, segmented date, certainty tiles, time entry, place combobox. */
-async function fillPersonalBirth(page: Page, opts: { name: string; date: string; certainty: string; place: string }) {
-  await typeByLabel(page, "Who is this reading for?", opts.name);
+/** One person's birth details: typed name, segmented date, certainty tiles, time entry, place combobox. */
+async function fillPersonalBirth(page: Page, opts: { name: string; date: string; certainty: string; place: string; nameLabel?: string; prefix?: string }) {
+  const prefix = opts.prefix ?? "birth";
+  await typeByLabel(page, opts.nameLabel ?? "Who is this reading for?", opts.name);
   // Type the date the way people do, separators and all; the segments advance on their own.
   await page.click('input[aria-label="Day"]');
   await page.keyboard.type(opts.date, { delay: 70 });
   await page.waitForSelector("::-p-text(Date recognised)", { timeout: 5_000 });
-  await page.click(`label:has(input[name="birth.timeCertainty"][value=${opts.certainty}])`);
+  await page.click(`label:has(input[name="${prefix}.timeCertainty"][value=${opts.certainty}])`);
   if (opts.certainty === "exact") {
     await page.waitForSelector('input[aria-label="Hour"]');
     await page.click('input[aria-label="Hour"]');
@@ -77,13 +52,15 @@ async function fillPersonalBirth(page: Page, opts: { name: string; date: string;
     await page.click('button[role="radio"]::-p-text(AM)');
     await page.waitForSelector("strong::-p-text(06:30)");
   } else if (opts.certainty === "approximate") {
-    await page.click('label:has(input[name="birth.approxBlock"][value=early_morning])');
+    await page.click(`label:has(input[name="${prefix}.approxBlock"][value=early_morning])`);
   }
   await page.waitForSelector('input[role="combobox"]');
   await page.type('input[role="combobox"]', opts.place, { delay: 40 });
   await page.waitForSelector('[role="option"]', { timeout: 15_000 });
   await page.click('[role="option"]');
-  await page.waitForSelector("::-p-text(Everything we need to calculate your chart.)", { timeout: 5_000 });
+  // The personal wizard confirms the whole step; elsewhere the chosen place is enough.
+  if (prefix === "birth") await page.waitForSelector("::-p-text(Everything we need to calculate your chart.)", { timeout: 5_000 });
+  else await page.waitForSelector("button::-p-text(Change)", { timeout: 5_000 });
 }
 
 async function payAndOpen(page: Page) {
@@ -124,13 +101,13 @@ try {
     await clickText(page, "Continue");
 
     await page.waitForSelector("h1::-p-text(Person A)");
-    await fillBirth(page, { nameLabel: "Person A's full name", name: "Kavya Raman", day: "10", month: "3", year: "1991", certaintyName: "participants.0.birth.timeCertainty", certainty: "exact", place: "Chennai" });
+    await fillPersonalBirth(page, { nameLabel: "Person A: what is their name?", prefix: "participants.0.birth", name: "Kavya Raman", date: "10/3/1991", certainty: "exact", place: "Chennai" });
     await typeByLabel(page, "Additional information about this person", "Likes to plan ahead and talk things through.");
     await snap(page, "step2");
     await clickText(page, "Continue");
 
     await page.waitForSelector("h1::-p-text(Person B)");
-    await fillBirth(page, { nameLabel: "Person B's full name", name: "Sam Okafor", day: "2", month: "11", year: "1989", certaintyName: "participants.1.birth.timeCertainty", certainty: "unknown", place: "New York" });
+    await fillPersonalBirth(page, { nameLabel: "Person B: what is their name?", prefix: "participants.1.birth", name: "Sam Okafor", date: "2/11/1989", certainty: "unknown", place: "New York" });
     await snap(page, "step3");
     await clickText(page, "Continue");
 

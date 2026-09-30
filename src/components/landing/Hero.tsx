@@ -12,7 +12,7 @@ export function Hero({ personalAvailable, compatibilityAvailable, closedMessage 
   const h = HOME.hero;
   const delay = (ms: number) => ({ "--intro-delay": `${ms}ms` }) as React.CSSProperties;
   return (
-    <section aria-label="Introduction" className="relative isolate overflow-hidden bg-(--color-midnight) text-ivory-100">
+    <section id="hero" aria-labelledby="hero-heading" className="relative isolate overflow-hidden bg-(--color-midnight) text-ivory-100">
       {/* Sky: layered light, stars and grain. */}
       <div aria-hidden="true" className="absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_60%_at_72%_38%,rgb(40_51_108/0.55),transparent_70%),radial-gradient(ellipse_60%_50%_at_12%_90%,rgb(122_86_26/0.18),transparent_70%),linear-gradient(180deg,#070c17_0%,#0a1523_60%,#0b1628_100%)]" />
@@ -21,12 +21,12 @@ export function Hero({ personalAvailable, compatibilityAvailable, closedMessage 
         <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-b from-transparent to-(--color-midnight)" />
       </div>
 
-      <div className="container-page grid items-center gap-10 pb-20 pt-14 sm:pt-20 lg:min-h-[min(calc(100svh-4rem),50rem)] lg:grid-cols-[1.08fr_1fr] lg:gap-6 lg:pb-24 lg:pt-16">
+      <div className="container-page grid items-center gap-10 pb-12 pt-14 sm:pb-20 sm:pt-20 lg:min-h-[min(calc(100svh-4rem),50rem)] lg:grid-cols-[1.08fr_1fr] lg:gap-6 lg:pb-24 lg:pt-16">
         <div className="relative z-10 max-w-[38rem]">
           <p className="intro-rise text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-gold-300" style={delay(150)}>
             {h.eyebrow}
           </p>
-          <h1 className="h-hero mt-5 text-ivory-50 lg:text-[clamp(3rem,5vw,5.2rem)]">
+          <h1 id="hero-heading" className="h-hero mt-5 text-ivory-50 lg:text-[clamp(3rem,5vw,5.2rem)]">
             <span className="mask-line intro-line" style={delay(250)}>
               <span>{h.headline[0]}</span>
             </span>
@@ -37,7 +37,7 @@ export function Hero({ personalAvailable, compatibilityAvailable, closedMessage 
           <p className="intro-rise mt-6 max-w-[33rem] text-[1.06rem] leading-relaxed text-ivory-200/90 lg:text-[1.12rem]" style={delay(560)}>
             {h.supporting}
           </p>
-          <ul className="intro-rise mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.8rem] font-medium tracking-wide text-ivory-300" style={delay(640)} aria-label="How it works">
+          <ul className="intro-rise mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.8rem] font-medium tracking-wide text-ivory-300" style={delay(640)} aria-label="What makes it different">
             {h.trust.map((t, i) => (
               <li key={t} className="flex items-center gap-3">
                 {i ? <span aria-hidden="true" className="h-1 w-1 rounded-full bg-gold-400/70" /> : null}
@@ -81,15 +81,9 @@ export function Hero({ personalAvailable, compatibilityAvailable, closedMessage 
               ) : null}
             </div>
           )}
-          <p className="intro-rise mt-10 inline-flex items-center gap-2 rounded-full border border-gold-300/25 bg-white/[0.03] px-4 py-2 text-xs font-medium tracking-wide text-gold-200" style={delay(900)}>
-            <svg aria-hidden="true" viewBox="0 0 16 16" className="h-3 w-3 text-gold-300">
-              <path fill="currentColor" d="M8 0 9.4 6.6 16 8 9.4 9.4 8 16 6.6 9.4 0 8 6.6 6.6Z" />
-            </svg>
-            {h.badge}
-          </p>
         </div>
 
-        <div aria-hidden="true" className="hero-drift pointer-events-none relative -mx-(--gutter) h-[min(88vw,26rem)] sm:h-[30rem] lg:mx-0 lg:h-[min(40rem,78vh)]">
+        <div aria-hidden="true" className="hero-drift pointer-events-none relative -mx-(--gutter) -mt-4 h-[min(66vw,17rem)] sm:mt-0 sm:h-[28rem] lg:mx-0 lg:h-[min(40rem,78vh)]">
           <Astrolabe className="intro-fade absolute left-1/2 top-1/2 aspect-square h-[132%] max-h-none -translate-x-1/2 -translate-y-1/2 opacity-90 lg:h-full" />
         </div>
       </div>

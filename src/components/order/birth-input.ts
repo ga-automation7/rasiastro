@@ -151,3 +151,16 @@ export function personalBirthErrors(s: BirthFieldsState, today: Date = new Date(
   if (!s.place) e["birth.placeId"] = "Choose a location from the suggestions.";
   return e;
 }
+
+const FIELD_ORDER = ["subjectName", "birthDate", "timeCertainty", "birthTime", "timeWindowMinutes", "placeId"] as const;
+
+/**
+ * The first problem only, in the order the fields appear, keyed where the order API
+ * puts this person (e.g. "birth" or "participants.1.birth"), so nothing further down
+ * turns red before the visitor gets to it.
+ */
+export function firstBirthError(s: BirthFieldsState, prefix: string, today: Date = new Date()): Record<string, string> {
+  const all = personalBirthErrors(s, today);
+  const key = FIELD_ORDER.find((k) => all[`birth.${k}`]);
+  return key ? { [`${prefix}.${key}`]: all[`birth.${key}`]! } : {};
+}

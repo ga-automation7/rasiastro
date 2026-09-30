@@ -1,4 +1,4 @@
-import { NAKSHATRA_NAMES_EN, SIGN_NAMES_EN, type SignKey } from "@/domain/astrology/constants";
+import { NAKSHATRA_NAMES_EN, PLANET_NAMES_EN, SIGN_NAMES_EN, formatDegreeInSign, type SignKey } from "@/domain/astrology/constants";
 import { getDictionary } from "@/i18n";
 import { CHART_SVG_CSS, southIndianChartSvg } from "./chart-svg";
 import { buildSampleReport } from "./sample";
@@ -19,6 +19,8 @@ export interface ReportPreview {
   career: string;
   relationships: string;
   ahead: { title: string; dates: string; excerpt: string };
+  planets: { name: string; sign: string; degree: string; house: string }[];
+  summary: string;
 }
 
 const DASH = /[-‐-―]/;
@@ -80,6 +82,13 @@ export async function getReportPreview(): Promise<ReportPreview> {
       dates: aheadPeriod ? `${year(aheadPeriod.start)} to ${year(aheadPeriod.end)}` : "",
       excerpt: excerpt(aheadEntry?.paragraphs ?? [], 330),
     },
+    planets: chart.grahas.map((g) => ({
+      name: PLANET_NAMES_EN[g.key],
+      sign: g.sign.status === "known" ? SIGN_NAMES_EN[g.sign.value].sanskrit : "",
+      degree: g.longitude !== null ? formatDegreeInSign(g.longitude) : "",
+      house: g.house.status === "known" ? String(g.house.value) : "",
+    })),
+    summary: excerpt(doc.interpretation.synthesis.combinedSummary, 300),
   };
   return cached;
 }

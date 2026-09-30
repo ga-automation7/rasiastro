@@ -11,7 +11,64 @@ import { UpiPayment } from "./UpiPayment.client";
  * Live order status. Shows only states recorded on the server (no fake progress).
  * Polls while something is still happening; stops once the order settles.
  */
-const ICON: Record<StageState, string> = { done: "✓", active: "…", pending: "", failed: "!", skipped: "–" };
+/** Friendlier wording for each real server stage (the server label stays the fallback). */
+const STAGE_COPY: Record<string, { title?: string; pairTitle?: string; body: string }> = {
+  payment: { body: "Verified with our payment partner." },
+  chart: { title: "Calculating your chart", pairTitle: "Calculating both charts", body: "Planetary positions for the date, time and place of birth." },
+  interpretation: { title: "Writing your interpretation", body: "Reading the chart in your chosen tradition and language." },
+  pdf: { title: "Creating your report and PDF", body: "Laying out your web report and your PDF." },
+  ready: { body: "Open it here, and look out for our email." },
+};
+
+function StageIcon({ state }: { state: StageState }) {
+  if (state === "done")
+    return (
+      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-700 text-ivory-50">
+        <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3.5 8.5 6.5 11.5 12.5 4.5" />
+        </svg>
+      </span>
+    );
+  if (state === "active")
+    return (
+      <span className="relative flex h-8 w-8 items-center justify-center rounded-full border border-gold-400 bg-ivory-50">
+        <span className="stage-orbit absolute inset-[-3px] rounded-full">
+          <span className="absolute left-1/2 top-0 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-gold-500" />
+        </span>
+        <span className="h-2 w-2 rounded-full bg-gold-500" />
+      </span>
+    );
+  if (state === "failed") return <span className="flex h-8 w-8 items-center justify-center rounded-full bg-danger font-bold text-white">!</span>;
+  return <span className="flex h-8 w-8 items-center justify-center rounded-full border border-ivory-300 bg-white"><span className="h-1.5 w-1.5 rounded-full bg-ivory-300" /></span>;
+}
+
+/** A small orbiting chart while the report is prepared (CSS only; still under reduced motion). */
+function Preparing({ typicalMinutes }: { typicalMinutes: number }) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl bg-(--color-midnight) p-6 text-ivory-100 sm:p-7">
+      <div className="flex items-center gap-5">
+        <svg aria-hidden="true" viewBox="0 0 80 80" className="h-16 w-16 shrink-0 text-gold-300" fill="none" stroke="currentColor">
+          <circle cx="40" cy="40" r="36" strokeOpacity="0.35" strokeWidth="0.8" />
+          <circle cx="40" cy="40" r="24" strokeOpacity="0.5" strokeWidth="0.8" strokeDasharray="1.5 3" />
+          <rect x="30" y="30" width="20" height="20" strokeOpacity="0.7" strokeWidth="0.8" />
+          <path d="M30 36.7h20M30 43.3h20M36.7 30v20M43.3 30v20" strokeOpacity="0.45" strokeWidth="0.6" />
+          <g className="stage-orbit" style={{ transformOrigin: "40px 40px" }}>
+            <circle cx="40" cy="4" r="2.4" fill="currentColor" stroke="none" />
+          </g>
+          <g className="stage-orbit-slow" style={{ transformOrigin: "40px 40px" }}>
+            <circle cx="64" cy="40" r="1.6" fill="currentColor" stroke="none" />
+          </g>
+        </svg>
+        <div>
+          <p className="font-display text-xl text-ivory-50">Your report is being prepared.</p>
+          <p className="mt-1 text-sm leading-relaxed text-ivory-300">
+            Most reports are ready in about {typicalMinutes} minutes. You can close this page: we will email your private link when it is ready.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function settled(v: OrderStatusView): boolean {
   // A UPI payment being confirmed by hand can still turn into a paid order: keep watching.
@@ -110,27 +167,33 @@ export function OrderStatus({ initial, paymentReturned, startFailed, typicalMinu
         </p>
       ) : null}
 
+      {view.paymentStatus === "paid" && !view.reportReady && view.generationStatus !== "failed" ? <Preparing typicalMinutes={typicalMinutes} /> : null}
+
       <section aria-labelledby="progress-heading">
-        <h2 id="progress-heading" className="text-2xl font-semibold text-ink-900">
+        <h2 id="progress-heading" className="font-display text-2xl text-ink-900">
           Progress
         </h2>
-        <ol className="mt-4 space-y-3" aria-live="polite">
-          {view.stages.map((s) => (
-            <li key={s.key} className="flex items-center gap-3">
-              <span
-                aria-hidden="true"
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
-                  s.state === "done" ? "bg-success text-white" : s.state === "failed" ? "bg-danger text-white" : s.state === "active" ? "animate-pulse bg-gold-300 text-ink-900" : "border border-ivory-300 bg-white"
-                }`}
-              >
-                {ICON[s.state]}
-              </span>
-              <span className={s.state === "pending" ? "text-muted" : "font-semibold text-ink-900"}>
-                {s.label}
-                <span className="sr-only">: {s.state}</span>
-              </span>
-            </li>
-          ))}
+        <ol className="relative mt-5" aria-live="polite">
+          {view.stages.map((s, i) => {
+            const c = STAGE_COPY[s.key];
+            const title = (view.product === "compatibility" ? c?.pairTitle : undefined) ?? c?.title ?? s.label;
+            const last = i === view.stages.length - 1;
+            return (
+              <li key={s.key} className="relative flex gap-4 pb-6 last:pb-0">
+                {!last ? <span aria-hidden="true" className={`absolute left-4 top-9 h-[calc(100%-2.5rem)] w-px -translate-x-1/2 ${s.state === "done" ? "bg-teal-700/50" : "bg-ivory-300"}`} /> : null}
+                <span aria-hidden="true" className="relative z-10 shrink-0">
+                  <StageIcon state={s.state} />
+                </span>
+                <div className="pt-1">
+                  <p className={s.state === "pending" ? "text-muted" : "font-semibold text-ink-900"}>
+                    {title}
+                    <span className="sr-only">: {s.state}</span>
+                  </p>
+                  {c && s.state !== "pending" ? <p className="mt-0.5 text-sm text-muted">{c.body}</p> : null}
+                </div>
+              </li>
+            );
+          })}
         </ol>
       </section>
 
@@ -224,9 +287,6 @@ export function OrderStatus({ initial, paymentReturned, startFailed, typicalMinu
         </div>
       ) : null}
 
-      {view.paymentStatus === "paid" && !view.reportReady && view.generationStatus !== "failed" ? (
-        <p className="text-sm text-muted">Reports usually take up to about {typicalMinutes} minutes. You can close this page; your email link will bring you back.</p>
-      ) : null}
     </div>
   );
 }

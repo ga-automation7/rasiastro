@@ -10,10 +10,18 @@ export const SITE = {
 
 export const NAV_LINKS = [
   { href: "/#how-it-works", label: "How it works" },
-  { href: "/#report", label: "Your report" },
-  { href: "/#compatibility", label: "Compatibility" },
+  { href: "/#report", label: "Sample report" },
   { href: "/#pricing", label: "Pricing" },
+  { href: "/compatibility-report", label: "Compatibility" },
   { href: "/#faq", label: "FAQ" },
+] as const;
+
+/** The public product and company pages (footer and internal links). */
+export const REPORT_LINKS = [
+  { href: "/indian-astrology-report", label: "Indian astrology report" },
+  { href: "/western-astrology-report", label: "Western astrology report" },
+  { href: "/compatibility-report", label: "Compatibility report" },
+  { href: "/about", label: "About Rasi Astro" },
 ] as const;
 
 export const POLICY_LINKS = [

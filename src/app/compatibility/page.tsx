@@ -7,7 +7,7 @@ import { getCheckoutAvailability } from "@/server/config/readiness";
 export const metadata: Metadata = {
   title: "Your connection report",
   description: "A compatibility report for two people and one connection: relationship, marriage, friendship, career and teamwork, business partnership or family.",
-  robots: { index: false, follow: false },
+  robots: { index: false, follow: true },
 };
 export const dynamic = "force-dynamic";
 

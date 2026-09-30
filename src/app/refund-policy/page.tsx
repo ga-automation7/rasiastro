@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage, businessDetails } from "@/components/legal/LegalPage";
 
-export const metadata: Metadata = { title: "Refund & Cancellation" };
+export const metadata: Metadata = { title: "Refund & Cancellation", description: "When Rasi Astro refunds an order, how cancellations work, and what happens if a report cannot be completed.", alternates: { canonical: "/refund-policy" } };
 export const dynamic = "force-dynamic";
 
 export default function RefundPolicyPage() {

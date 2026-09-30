@@ -8,17 +8,17 @@ import { formatInr } from "@/domain/pricing";
 import type { LanguageCode, TraditionCode } from "@/config/languages";
 import { openPayment, postJson, recordFormStarted } from "./checkout";
 import { BirthDetailsStep } from "./BirthDetailsStep.client";
-import { personalBirthErrors } from "./birth-input";
+import { firstBirthError, personalBirthErrors } from "./birth-input";
 import { StepChoose } from "./StepChoose.client";
 import { StepContext } from "./StepContext.client";
 import { StepReview, type PreviewResult } from "./StepReview.client";
 import { EMPTY_STATE, from24, stepForField, toOrderInput, type PlaceOption, type StepId, type WizardState } from "./wizard-state";
 
-const STEPS: { id: StepId; title: string }[] = [
-  { id: 1, title: "Choose your report" },
-  { id: 2, title: "Your birth details" },
-  { id: 3, title: "Notes and questions" },
-  { id: 4, title: "Review your details" },
+const STEPS: { id: StepId; title: string; short: string }[] = [
+  { id: 1, title: "Choose your report", short: "Choose system" },
+  { id: 2, title: "Your birth details", short: "Birth details" },
+  { id: 3, title: "Notes and questions", short: "Personalise" },
+  { id: 4, title: "Review your details", short: "Review" },
 ];
 
 /** Minimal per-step checks for quick feedback; the server re-validates everything. */
@@ -28,13 +28,8 @@ function stepErrors(step: StepId, s: WizardState): Record<string, string> {
     if (!s.tradition) e.tradition = "Please choose a tradition.";
     if (!s.language) e.language = "Please choose a report language.";
   }
-  if (step === 2) {
-    // One problem at a time, in the order the fields appear, so nothing further down
-    // turns red before the visitor gets to it.
-    const all = personalBirthErrors(s);
-    const first = ["subjectName", "birthDate", "timeCertainty", "birthTime", "timeWindowMinutes", "placeId"].map((k) => `birth.${k}`).find((k) => all[k]);
-    if (first) e[first] = all[first]!;
-  }
+  // One problem at a time, in the order the fields appear.
+  if (step === 2) Object.assign(e, firstBirthError(s, "birth"));
   if (step === 3 && s.includeQuestions) {
     s.questions.forEach((q, i) => {
       if (q.trim().length < 10) e[`questions.${i}`] = "Please write at least 10 characters, or remove the questions.";
@@ -226,22 +221,30 @@ export function OrderWizard({
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
       <nav aria-label="Order steps" className="mb-10">
         <div className="flex items-center justify-between text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-muted">
-          <span aria-current="step">
+          <span>
             Step {step} of {STEPS.length}
+            <span className="sm:hidden"> · {STEPS[step - 1]!.short}</span>
           </span>
           {step === 2 ? <span className="hidden sm:inline">Personal report · {formatInr(PRICING.report.amountPaise)}</span> : null}
         </div>
         <ol className="mt-3 grid grid-cols-4 gap-1.5">
           {STEPS.map((s) => (
-            <li key={s.id} className="relative h-[3px] overflow-hidden rounded-full bg-ivory-300/80">
-              <span className="sr-only">
-                {s.id}. {s.title}
+            <li key={s.id} aria-current={s.id === step ? "step" : undefined}>
+              <span className="relative block h-[3px] overflow-hidden rounded-full bg-ivory-300/80">
+                <span
+                  aria-hidden="true"
+                  className={`absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-gold-500 to-gold-300 transition-[width] duration-700 ease-[var(--ease-soft)] ${s.id < step ? "w-full" : s.id === step ? "w-1/2" : "w-0"}`}
+                />
+              </span>
+              <span className={`mt-2 hidden text-xs font-semibold transition-colors duration-300 sm:block ${s.id === step ? "text-ink-900" : s.id < step ? "text-gold-700" : "text-muted"}`}>
+                <span className="sr-only">Step {s.id}: </span>
+                {s.short}
+                <span className="sr-only">{s.id < step ? " (done)" : s.id === step ? " (current)" : ""}</span>
+              </span>
+              <span className="sr-only sm:hidden">
+                Step {s.id}: {s.short}
                 {s.id < step ? " (done)" : s.id === step ? " (current)" : ""}
               </span>
-              <span
-                aria-hidden="true"
-                className={`absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-gold-500 to-gold-300 transition-[width] duration-700 ease-[var(--ease-soft)] ${s.id < step ? "w-full" : s.id === step ? "w-1/2" : "w-0"}`}
-              />
             </li>
           ))}
         </ol>

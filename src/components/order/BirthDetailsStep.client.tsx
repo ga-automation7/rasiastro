@@ -412,11 +412,19 @@ export function BirthDetailsStep({
   onChange,
   errors,
   tradition,
+  prefix = "birth",
+  nameLabel = "Who is this reading for?",
+  nameNote = "Only used to personalise your report.",
 }: {
   value: BirthFieldsState;
   onChange: (patch: Partial<BirthFieldsState>) => void;
+  /** Errors keyed as the order API reports them, e.g. "birth.placeId" or "participants.1.birth.placeId". */
   errors: Record<string, string>;
   tradition: TraditionCode | null;
+  /** Where this person's fields live in the order request (and in its error keys). */
+  prefix?: string;
+  nameLabel?: string;
+  nameNote?: string;
 }) {
   const id = useId();
   const nameRef = useRef<HTMLInputElement>(null);
@@ -431,7 +439,8 @@ export function BirthDetailsStep({
 
   // Errors are shown only while they still apply, with the current wording.
   const live = personalBirthErrors(value);
-  const err = (key: string) => (errors[`birth.${key}`] ? (live[`birth.${key}`] ?? null) : null);
+  const has = (key: string) => Boolean(errors[`${prefix}.${key}`]);
+  const err = (key: string) => (has(key) ? (live[`birth.${key}`] ?? null) : null);
 
   const name = firstName(value.subjectName);
   const nameOk = value.subjectName.trim().length >= 2;
@@ -443,17 +452,17 @@ export function BirthDetailsStep({
     (value.timeCertainty === "approximate" && Boolean(value.timeWindowMinutes) && timeComplete(value));
 
   // Progressive reveal; anything already filled in (going Back, or a prefilled order) stays visible.
-  const showDob = nameOk || Boolean(value.day || value.month || value.year) || Boolean(errors["birth.birthDate"]);
-  const showCertainty = dob === "ok" || value.timeCertainty !== null || Boolean(errors["birth.timeCertainty"]);
-  const showPlace = timeReady || value.place !== null || Boolean(errors["birth.placeId"]);
+  const showDob = nameOk || Boolean(value.day || value.month || value.year) || has("birthDate");
+  const showCertainty = dob === "ok" || value.timeCertainty !== null || has("timeCertainty");
+  const showPlace = timeReady || value.place !== null || has("placeId");
 
   // Bring the first control that needs attention into view when Continue finds a problem.
   useEffect(() => {
-    const first = ["subjectName", "birthDate", "timeCertainty", "birthTime", "timeWindowMinutes", "placeId"].find((k) => errors[`birth.${k}`]);
+    const first = ["subjectName", "birthDate", "timeCertainty", "birthTime", "timeWindowMinutes", "placeId"].find((k) => errors[`${prefix}.${k}`]);
     const target =
       first === "subjectName" ? nameRef : first === "birthDate" ? dayRef : first === "timeCertainty" ? certaintyRef : first === "birthTime" ? hourRef : first === "timeWindowMinutes" ? chipRef : first === "placeId" ? placeRef : null;
     if (target?.current) target.current.focus({ preventScroll: false });
-  }, [errors]);
+  }, [errors, prefix]);
 
   const chooseCertainty = (next: NonNullable<BirthFieldsState["timeCertainty"]>) => {
     if (next === value.timeCertainty) return;
@@ -481,7 +490,7 @@ export function BirthDetailsStep({
       {/* 1. Name */}
       <div>
         <label htmlFor={`${id}-name`} className="step-label">
-          Who is this reading for?
+          {nameLabel}
         </label>
         <input
           ref={nameRef}
@@ -504,7 +513,7 @@ export function BirthDetailsStep({
           aria-describedby={`${id}-name-hint${err("subjectName") ? ` ${id}-name-error` : ""}`}
         />
         <div id={`${id}-name-hint`} className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.86rem] text-muted">
-          <span>Only used to personalise your report.</span>
+          <span>{nameNote}</span>
           <span className="inline-flex items-center gap-1.5">
             <svg aria-hidden="true" viewBox="0 0 16 16" className="h-3.5 w-3.5 text-gold-600" fill="none" stroke="currentColor" strokeWidth="1.4">
               <rect x="3" y="7" width="10" height="7" rx="1.6" />
@@ -538,7 +547,7 @@ export function BirthDetailsStep({
           <fieldset aria-describedby={`${id}-certainty-sub${err("timeCertainty") ? ` ${certaintyErrorId}` : ""}`}>
             <legend className="step-label">Do you know the birth time?</legend>
             <p id={`${id}-certainty-sub`} className="-mt-1 mb-4 text-[0.95rem] text-muted">
-              Even an approximate time can help.
+              {tradition === "western" ? "A birth time sets the Rising sign and houses." : tradition === "indian" ? "A birth time sets the Lagna and houses." : "A birth time sets the rising sign and houses."} Even an approximate time helps.
             </p>
             <div className="grid gap-3 sm:grid-cols-3">
               {CERTAINTY.map((c, i) => {
@@ -548,7 +557,7 @@ export function BirthDetailsStep({
                     <input
                       ref={i === 0 ? certaintyRef : undefined}
                       type="radio"
-                      name="birth.timeCertainty"
+                      name={`${prefix}.timeCertainty`}
                       value={c.value}
                       checked={checked}
                       onChange={() => chooseCertainty(c.value)}
@@ -599,7 +608,7 @@ export function BirthDetailsStep({
                       <input
                         ref={i === 0 ? chipRef : undefined}
                         type="radio"
-                        name="birth.approxBlock"
+                        name={`${prefix}.approxBlock`}
                         value={b.key}
                         checked={checked}
                         onChange={() => {
@@ -637,7 +646,7 @@ export function BirthDetailsStep({
                   <div className="flex flex-wrap gap-2">
                     {PRECISE_WINDOWS.map((m) => (
                       <label key={m} className={`chip-tile !min-h-10 !px-3 !py-2 ${value.timeWindowMinutes === m ? "is-checked" : ""}`}>
-                        <input type="radio" name="birth.timeWindowMinutes" value={m} checked={value.timeWindowMinutes === m} onChange={() => onChange({ timeWindowMinutes: m, dstChoice: null })} className="sr-only" />
+                        <input type="radio" name={`${prefix}.timeWindowMinutes`} value={m} checked={value.timeWindowMinutes === m} onChange={() => onChange({ timeWindowMinutes: m, dstChoice: null })} className="sr-only" />
                         <span className="text-sm font-semibold text-ink-900">± {m < 60 ? `${m} min` : `${m / 60} hour${m > 60 ? "s" : ""}`}</span>
                       </label>
                     ))}

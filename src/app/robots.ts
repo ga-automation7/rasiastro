@@ -4,12 +4,17 @@ import { getSiteState } from "@/server/config/readiness";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Private and transactional paths are never crawled. The order forms (/start,
+ * /compatibility) may be crawled but carry noindex, so search engines see that
+ * instruction instead of listing a blocked URL.
+ */
 export default function robots(): MetadataRoute.Robots {
   const env = getEnv();
   // Only the real shop is crawled; demo, sandbox and not-yet-open sites are not.
   if (getSiteState(env).kind !== "live") return { rules: [{ userAgent: "*", disallow: "/" }] };
   return {
-    rules: [{ userAgent: "*", allow: "/", disallow: ["/orders/", "/access", "/recover", "/api/", "/demo/", "/start", "/compatibility", "/admin"] }],
+    rules: [{ userAgent: "*", allow: "/", disallow: ["/orders/", "/access", "/recover", "/api/", "/demo/", "/admin"] }],
     sitemap: `${env.PUBLIC_SITE_URL.replace(/\/$/, "")}/sitemap.xml`,
   };
 }

@@ -7,12 +7,13 @@ import { REPORT_LANGUAGES, TRADITIONS, type LanguageCode, type TraditionCode } f
 import { CompatibilityOrderInputSchema, type CompatibilityOrderInputRaw } from "@/domain/compatibility-input";
 import { flattenIssues } from "@/domain/order-input";
 import { PRICE } from "@/content/site-copy";
-import { BirthFields } from "../order/BirthFields.client";
+import { BirthDetailsStep } from "../order/BirthDetailsStep.client";
+import { firstBirthError } from "../order/birth-input";
 import { CheckoutDetails, PriceSummary, type QuoteView } from "../order/CheckoutDetails.client";
 import { openPayment, postJson, recordFormStarted } from "../order/checkout";
 import { ChoiceCards, FieldShell } from "../order/fields";
 import { KnownDetails } from "../order/KnownDetails.client";
-import { EMPTY_BIRTH, EMPTY_KNOWN, birthErrors, birthInput, dateLabel, from24, knownInput, placeLabel, time24, timeLabel, type BirthFieldsState, type KnownState, type PlaceOption } from "../order/person";
+import { EMPTY_BIRTH, EMPTY_KNOWN, birthInput, dateLabel, from24, knownInput, placeLabel, time24, timeLabel, type BirthFieldsState, type KnownState, type PlaceOption } from "../order/person";
 import { DstChoice, ReviewRow } from "../order/StepReview.client";
 import { CategorySelector } from "./CategorySelector.client";
 
@@ -49,12 +50,12 @@ interface CompatState {
 }
 
 type StepId = 1 | 2 | 3 | 4 | 5;
-const STEPS: { id: StepId; title: string }[] = [
-  { id: 1, title: "Your connection" },
-  { id: 2, title: "Person A's details" },
-  { id: 3, title: "Person B's details" },
-  { id: 4, title: "About your connection" },
-  { id: 5, title: "Review your details" },
+const STEPS: { id: StepId; title: string; short: string }[] = [
+  { id: 1, title: "Your connection", short: "Connection" },
+  { id: 2, title: "Person A's details", short: "Person A" },
+  { id: 3, title: "Person B's details", short: "Person B" },
+  { id: 4, title: "About your connection", short: "Context" },
+  { id: 5, title: "Review your details", short: "Review" },
 ];
 
 const EMPTY_PERSON: PersonForm = { birth: EMPTY_BIRTH, known: EMPTY_KNOWN, additionalInfo: "" };
@@ -222,8 +223,8 @@ export function CompatibilityWizard({ initialCategory, fromOrderId }: { initialC
       if (!s.tradition) e.tradition = "Please choose a tradition.";
       if (!s.language) e.language = "Please choose a report language.";
     }
-    if (current === 2) Object.assign(e, birthErrors(s.people[0].birth, "participants.0.birth"));
-    if (current === 3) Object.assign(e, birthErrors(s.people[1].birth, "participants.1.birth"));
+    if (current === 2) Object.assign(e, firstBirthError(s.people[0].birth, "participants.0.birth"));
+    if (current === 3) Object.assign(e, firstBirthError(s.people[1].birth, "participants.1.birth"));
     return e;
   };
 
@@ -311,14 +312,14 @@ export function CompatibilityWizard({ initialCategory, fromOrderId }: { initialC
             ? "Start with either person. Each person's birthplace and time zone are worked out separately."
             : `Now the second person${other ? `, who connects with ${other}` : ""}.`}
         </p>
-        <BirthFields
+        <BirthDetailsStep
           value={person.birth}
           onChange={(patch) => updatePerson(index, { birth: { ...person.birth, ...patch } })}
           errors={errors}
           prefix={`participants.${index}.birth`}
           tradition={state.tradition}
-          nameLabel={`Person ${index === 0 ? "A" : "B"}'s full name`}
-          nameHint="Shown on the report. Names are never sent to the AI."
+          nameLabel={`Person ${index === 0 ? "A" : "B"}: what is their name?`}
+          nameNote="Shown on the report."
         />
         <KnownDetails
           value={person.known}
@@ -379,20 +380,32 @@ export function CompatibilityWizard({ initialCategory, fromOrderId }: { initialC
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
-      <nav aria-label="Order steps" className="mb-8">
-        <ol className="grid grid-cols-5 gap-2">
+      <nav aria-label="Order steps" className="mb-10">
+        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-muted">
+          Step {step} of {STEPS.length}
+          <span className="sm:hidden"> · {STEPS[step - 1]!.short}</span>
+        </p>
+        <ol className="mt-3 grid grid-cols-5 gap-1.5">
           {STEPS.map((s) => (
-            <li key={s.id}>
-              <div className={`h-1.5 rounded-full transition-colors duration-300 ${s.id <= step ? "bg-vermilion-600" : "bg-ivory-300"}`} />
-              <p className={`mt-2 hidden text-xs font-semibold md:block ${s.id === step ? "text-ink-900" : "text-muted"}`} aria-current={s.id === step ? "step" : undefined}>
-                {s.id}. {s.title}
-              </p>
+            <li key={s.id} aria-current={s.id === step ? "step" : undefined}>
+              <span className="relative block h-[3px] overflow-hidden rounded-full bg-ivory-300/80">
+                <span
+                  aria-hidden="true"
+                  className={`absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-gold-500 to-gold-300 transition-[width] duration-700 ease-[var(--ease-soft)] ${s.id < step ? "w-full" : s.id === step ? "w-1/2" : "w-0"}`}
+                />
+              </span>
+              <span className={`mt-2 hidden text-xs font-semibold transition-colors duration-300 sm:block ${s.id === step ? "text-ink-900" : s.id < step ? "text-gold-700" : "text-muted"}`}>
+                <span className="sr-only">Step {s.id}: </span>
+                {s.short}
+                <span className="sr-only">{s.id < step ? " (done)" : s.id === step ? " (current)" : ""}</span>
+              </span>
+              <span className="sr-only sm:hidden">
+                Step {s.id}: {s.short}
+                {s.id < step ? " (done)" : s.id === step ? " (current)" : ""}
+              </span>
             </li>
           ))}
         </ol>
-        <p className="mt-2 text-sm text-muted md:hidden">
-          Step {step} of 5: {STEPS[step - 1]!.title}
-        </p>
       </nav>
 
       <p className="eyebrow">

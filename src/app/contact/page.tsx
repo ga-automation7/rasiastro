@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage, businessDetails } from "@/components/legal/LegalPage";
 
-export const metadata: Metadata = { title: "Contact & Grievance Redressal" };
+export const metadata: Metadata = { title: "Contact & Grievance Redressal", description: "How to reach Rasi Astro support about an order, a report or your data, and how grievances are handled.", alternates: { canonical: "/contact" } };
 export const dynamic = "force-dynamic";
 
 export default function ContactPage() {

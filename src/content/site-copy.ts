@@ -21,100 +21,123 @@ export const CTA = {
   compatibility: `Check compatibility · ${PRICE.compatibility}`,
 } as const;
 
+/** How long reports take, from the configured and measured delivery times. */
+export function turnaround(typicalMinutes: number, maxHours: number): string {
+  return `Your report starts as soon as your payment is confirmed. Most are ready in about ${typicalMinutes} minutes, and we aim to deliver every report within ${maxHours} hours.`;
+}
+
 /**
- * The homepage, top to bottom. "Frontier AI" and "advanced AI" describe the production
- * model tier (see docs/CLAIMS.md); the model and provider are never named here.
+ * The homepage, top to bottom: what it is, how it works, what you learn, a sample,
+ * pricing, the questions people ask before buying, compatibility, traditions and
+ * languages, trust, and a closing call to action. "Frontier AI" and "advanced AI"
+ * describe the production model tier (see docs/CLAIMS.md); the model and provider are
+ * never named here.
  */
 export const HOME = {
   hero: {
-    eyebrow: "Indian + Western astrology · AI interpreted",
+    eyebrow: "Personal astrology reports · Indian and Western",
     headline: ["Your birth chart.", "Decoded for you."],
     supporting:
-      "Enter your birth details and receive a beautifully structured personal reading combining traditional astrological systems with advanced AI interpretation.",
-    trust: ["Traditional astrology", "Precise chart calculation", "Frontier AI interpretation"],
+      "Your exact birth chart, calculated from the moment and place you were born, then interpreted by AI into a clear personal report. Indian (Vedic) or Western astrology, written in your language.",
+    trust: ["Precise chart calculation", "Frontier AI interpretation", "Six report languages"],
     primary: CTA.personal,
     secondary: CTA.compatibility,
-    reassurance: ["No subscription", "Downloadable PDF", "No account required"],
-    questions: `Personal report with 3 questions · ${PRICE.personalWithQuestions}`,
-    badge: "Traditional astrology. Interpreted with frontier AI.",
+    reassurance: ["One payment", "Web report and PDF", "No account needed"],
+    questions: `Add three questions of your own · ${PRICE.personalWithQuestions} in total`,
   },
   engine: {
-    eyebrow: "The interpretation engine",
+    eyebrow: "How it works",
     headline: ["Ancient systems.", "Modern intelligence."],
-    body: [
-      "Your chart begins with your birth data: date, time and place. Planetary positions and astrological calculations form the foundation.",
-      "Rasi Astro then uses advanced AI to study the relationships, patterns and traditional interpretations within your chart, and transforms them into a structured personal reading you can actually understand.",
-    ],
-    badge: ["Tradition", "Computation", "Frontier AI"],
+    body: "Astrology begins with the sky at the moment you were born. Rasi Astro calculates that sky precisely, then uses advanced AI to read your chart through the tradition you choose and write it up as a report you can actually understand.",
     steps: [
-      { n: "01", title: "Calculate", body: "Your birth details are converted into the astronomical and astrological positions used by the selected system." },
-      { n: "02", title: "Interpret", body: "Traditional rules, planetary relationships and chart patterns are analysed together instead of as isolated horoscope statements." },
-      { n: "03", title: "Compose", body: "Advanced AI turns the analysis into a structured, readable and personalised report." },
+      { n: "01", title: "Calculate", body: "Your date, time and place of birth become exact planetary positions, with your birthplace's historical time zone applied." },
+      { n: "02", title: "Interpret", body: "Traditional rules, planetary relationships and chart patterns are read together, not as isolated horoscope lines." },
+      { n: "03", title: "Compose", body: "Advanced AI writes a structured personal report in your language, checked automatically before it reaches you." },
     ],
-    poweredBy: "Powered by advanced frontier AI",
     guardrail: "The AI interprets your calculated chart. It never invents planetary positions.",
   },
-  receive: {
-    eyebrow: "See what you receive",
+  learn: {
+    eyebrow: "Inside your report",
+    headline: "What exactly will I learn?",
+    supporting: "Every section is written from your own calculated chart, in the tradition and language you choose.",
+    topics: [
+      { glyph: "chart", title: "Your chart, calculated", body: "Every planet with its sign, degree and house, and what each position means for you, in plain language." },
+      { glyph: "patterns", title: "Personality and patterns", body: "The strengths and tendencies that recur across your chart, offered as ideas to reflect on." },
+      { glyph: "career", title: "Career and direction", body: "What your chart suggests about work, ambition and the way you make decisions." },
+      { glyph: "relationships", title: "Relationships", body: "Themes of connection, communication and partnership in your chart." },
+      { glyph: "growth", title: "Money and growth", body: "Your chart's perspective on money and security, and on the ways you grow." },
+      { glyph: "past", title: "Periods behind you", body: "Past planetary periods you may recognise, framed as patterns rather than facts." },
+      { glyph: "periods", title: "Periods ahead", body: "The periods now unfolding, each with its opportunities and its challenges." },
+      { glyph: "perspectives", title: "Traditions compared", body: "Your chart read from more than one perspective, and where those readings agree or differ." },
+      { glyph: "summary", title: "Summary and your questions", body: "Your main themes gathered in one place, with answers to any questions you add." },
+    ],
+    tabs: { indian: "In an Indian report", western: "In a Western report" },
+  },
+  sample: {
+    eyebrow: "Sample report",
     headline: ["Not a horoscope.", "A report about you."],
-    supporting: "Your reading is organised into a beautifully designed PDF you can save, revisit and keep.",
-    cta: `See your report · ${PRICE.personal}`,
-    note: "Generated specifically from your birth details.",
+    supporting: "Six pages from our sample report. Open any page to look closer.",
+    cta: `Get my report · ${PRICE.personal}`,
     sampleNote: "Sample pages for a fictional person. The chart is genuinely calculated; the reading text is illustrative.",
   },
-  includes: {
-    eyebrow: `What ${PRICE.personal} includes`,
-    headline: "More than a daily horoscope.",
-    cards: [
-      { glyph: "chart", title: "Your chart", body: "Birth chart calculations based on your date, time and place of birth." },
-      { glyph: "nakshatra", title: "Your Nakshatra", body: "Understand the lunar constellation traditionally associated with your birth." },
-      { glyph: "lagna", title: "Your Rasi & Lagna", body: "See the major foundations used in Indian astrological interpretation." },
-      { glyph: "patterns", title: "Personality & patterns", body: "A structured interpretation of recurring strengths, tendencies and themes." },
-      { glyph: "career", title: "Career & direction", body: "Explore traditional astrological perspectives related to work, ambition and decision making." },
-      { glyph: "relationships", title: "Relationships", body: "Understand chart themes traditionally associated with connection, communication and partnership." },
-      { glyph: "periods", title: "Life periods", body: "Explore significant planetary periods and how astrology traditionally interprets their themes." },
-      { glyph: "summary", title: "Personal summary", body: "A final synthesis designed to make the entire reading easier to understand." },
-    ],
-    note: "Nakshatra, Rasi and Lagna belong to Indian reports. A Western report covers your Sun, Moon and Rising signs, aspects and houses instead.",
-  },
   pricing: {
-    eyebrow: "One payment",
+    eyebrow: "Pricing",
     headline: "Your complete personal reading.",
-    points: ["No subscription.", "No account required.", "Your PDF is yours to keep."],
-    cta: `Generate my report · ${PRICE.personal}`,
+    included: [
+      "Your calculated birth chart and a full written reading",
+      "Indian (Vedic) or Western astrology, your choice",
+      "Tamil, English, Hindi, Telugu, Kannada or Malayalam",
+      "A web report and a PDF to keep",
+      "A private link by email. No account, no subscription",
+    ],
+    cta: `Get my personal report · ${PRICE.personal}`,
     upsellQuestion: "Want to ask something specific?",
-    upsell: `Add 3 personal questions for ${PRICE.questions}.`,
+    upsell: `Add three personal questions for ${PRICE.questions}. Each one is answered in its own section of your report.`,
     total: PRICE.personalWithQuestions,
     upsellCta: `Add my questions · ${PRICE.personalWithQuestions}`,
-    footnote: "One tradition per purchase, Indian or Western. Questions can be added to personal reports only.",
+    footnote: "One tradition per purchase. Questions can be added to personal reports only.",
+    compatibility: `Two people? A compatibility report is ${PRICE.compatibility} for the pair.`,
   },
   compatibility: {
     eyebrow: "Compatibility",
     headline: ["Two charts.", "One deeper comparison."],
-    body: "Compare two birth charts across relationship, marriage, friendship, family, business or professional compatibility.",
-    label: "Compatibility report",
-    responsible: "Designed to explore astrological patterns, not to make important life decisions for you.",
-  },
-  languages: {
-    eyebrow: "Six report languages",
-    headline: "Astrology should speak your language.",
-    body: "Explore your reading in the language that feels most natural to you.",
-    note: "Every report, Indian or Western, can be written in any of these languages. Indian reports also include Tamil, Kannada and Hindi (Janma Kundali) regional perspectives.",
+    body: "Compare two birth charts for a relationship, marriage, friendship, family, business or working partnership.",
+    label: "for two people",
   },
   traditions: {
-    eyebrow: "Two traditions",
-    center: "Your birth data",
-    centerNote: "Choose the system that resonates with you.",
-    indian: { title: "Indian astrology", body: "Explore traditional chart interpretation built around concepts such as Rasi, Nakshatra, Lagna and planetary periods." },
-    western: { title: "Western astrology", body: "Explore your natal chart through planetary placements, houses, aspects and Western astrological interpretation." },
+    eyebrow: "Your tradition, your language",
+    headline: ["Two traditions.", "Six languages."],
+    supporting: "Choose the astrology you know, and read it in the language that feels like home. Either tradition can be written in any of the six languages.",
+    indian: {
+      title: "Indian (Vedic) astrology",
+      body: "Your Jathagam, or Janma Kundali: Rasi, Nakshatra, Lagna and your Vimshottari dasha periods, on the sidereal zodiac.",
+      href: "/indian-astrology-report",
+      link: "About the Indian report",
+    },
+    western: {
+      title: "Western astrology",
+      body: "Your natal chart: Sun, Moon and Rising signs, planetary aspects and houses, on the tropical zodiac.",
+      href: "/western-astrology-report",
+      link: "About the Western report",
+    },
+    languagesNote: "Indian reports also include Tamil, Kannada and Hindi (Janma Kundali) regional perspectives.",
   },
-  transparency: {
-    eyebrow: "Built with transparency",
+  trust: {
+    eyebrow: "Why you can trust it",
+    headline: "Transparent by design.",
     points: [
-      { title: "Real calculations", body: "Chart positions are calculated from the birth information you provide." },
-      { title: "AI interpretation", body: "AI helps transform complex astrological information into structured, human readable reports." },
-      { title: "Your privacy", body: "Your personal information is used to deliver your report, as described in our privacy policy." },
-      { title: "No subscription", body: "Pay for the report you want. No recurring membership." },
+      {
+        glyph: "chart",
+        title: "Calculated, not guessed",
+        body: "Planetary positions come from an astronomical engine, with your birthplace's historical time zone applied. When your birth time leaves something open, the report says so.",
+      },
+      { glyph: "spark", title: "Honest about AI", body: "AI writes your reading from the calculated chart, and every report is checked automatically. No astrologer reviews it, and we say so plainly." },
+      {
+        glyph: "lock",
+        title: "Private by default",
+        body: "Your name, email, phone and birthplace are never sent to the AI. Your report opens only through your private link, and we use no advertising or analytics trackers.",
+      },
+      { glyph: "shield", title: "Secure payment", body: "You pay once, through our payment partner. We never see your card details or your UPI PIN." },
     ],
   },
   recovery: {
@@ -122,31 +145,20 @@ export const HOME = {
     body: "Enter the email address you ordered with and we will send fresh private links to your reports. No account or password needed.",
     cta: "Find my report",
   },
+  final: {
+    eyebrow: "Begin",
+    headline: ["Begin with the moment", "you were born."],
+    supporting: "Enter your birth details and receive a personal report to read online and keep as a PDF.",
+  },
 } as const;
 
 export const COPY = {
   meta: {
-    title: "Rasi Astro · Your birth chart, decoded for you",
-    description: `Personal birth chart reports (${PRICE.personal}) and compatibility reports for two (${PRICE.compatibility}), in Indian or Western astrology. Calculated with precision, interpreted by AI, written in Tamil, English, Hindi, Telugu, Kannada or Malayalam. PDF included. No account needed.`,
+    title: "Personal astrology reports from your birth chart · Rasi Astro",
+    description: `Personal astrology reports from your exact birth chart. Indian (Vedic) or Western, written in Tamil, English, Hindi, Telugu, Kannada or Malayalam. Web report and PDF from ${PRICE.personal}.`,
   },
   campaign: ["Centuries of tradition.", "Calculated by machines.", "Interpreted for you."],
-  hero: {
-    headline: ["The sky at your birth.", "The story it holds."],
-    supporting:
-      "Discover who you are, the chapters that may lie ahead, and the people who shape your story. Written for you in Tamil, English, Hindi, Telugu, Kannada or Malayalam.",
-    reassurance: "Pay once. Keep the PDF. No account needed.",
-  },
   personal: {
-    eyebrow: `Personal report · ${PRICE.personal}`,
-    headline: ["More than your sign.", "A fuller picture of you."],
-    supporting: "Your birth details are the starting point. Your report brings together your chart, its interpretation, and the questions that matter to you.",
-    themes: [
-      { title: "Your chart and its foundations", body: "Every calculated position, explained in plain language: what it is, and why it matters to you." },
-      { title: "Patterns to reflect on", body: "The themes that recur across your chart, offered as ideas to sit with, never as verdicts." },
-      { title: "Career, relationships and growth", body: "What your chart suggests about your work, the people close to you, the way you grow, and your relationship with money." },
-      { title: "Looking back and looking ahead", body: "Past periods you may recognise, and the periods now unfolding, framed as possibilities to prepare for. Never as certainties." },
-      { title: "A clear summary to return to", body: "What matters most, gathered in one place and written for you to revisit." },
-    ],
     addOn: {
       title: "Make it more personal.",
       price: `Add three questions for ${PRICE.questions}.`,
@@ -155,9 +167,6 @@ export const COPY = {
     },
   },
   indian: {
-    eyebrow: "Indian astrology",
-    headline: ["Your Jathagam.", "Rooted in tradition. Made personal."],
-    supporting: "Your Indian birth chart, explained with care. From your Rasi and Nakshatra to every placement and period your birth details can support.",
     detail: "The Indian report is your Jathagam, also called your Janma Kundali: the birth chart itself, and a written interpretation of it.",
     includes: [
       "Your Rasi chart (D1), drawn in both traditional layouts: signs fixed in place, and houses counted from your Lagna",
@@ -165,15 +174,12 @@ export const COPY = {
       "Every planetary placement, with its sign, degree, house and dignity",
       "Your Vimshottari dasha periods, and the Saturn and Jupiter transits that matter",
       "Your tithi, weekday, and the Tamil and lunar months of your birth",
+      "Tamil, Kannada and Hindi (Janma Kundali) regional perspectives on the same chart",
     ],
     timeNote:
       "Some details need a reliable birth time, such as the Lagna, the houses and exact dasha dates. When your time is approximate or unknown, they are limited or left out, and your report says so.",
   },
   western: {
-    eyebrow: "Western astrology",
-    headline: ["Your natal chart.", "A different lens on you."],
-    supporting:
-      "Explore how your planets and signs speak to one another, and your houses where your birth time allows, in an interpretation written around your chart alone.",
     includes: [
       "Your Sun and Moon signs, and your Rising sign when your birth time is known",
       "Every planetary position, and the aspects between them",
@@ -181,11 +187,9 @@ export const COPY = {
       "Your balance of elements and modalities, and whether yours is a day or night chart",
       "Two readings of one chart: modern psychological and traditional",
     ],
+    timeNote: "The Rising sign, Midheaven and houses need a reliable birth time. When your time is approximate or unknown, they are limited or left out, and your report says so.",
   },
   regional: {
-    eyebrow: "Six report languages",
-    headline: ["Familiar traditions.", "In words that feel like home."],
-    supporting: "Read your Indian chart with familiar terms and regional context, in the language you choose.",
     languagesNote: "Every report can be written in Tamil, English, Hindi, Telugu, Kannada or Malayalam, in either tradition.",
     perspectivesNote:
       "Every Indian report also includes three regional perspectives: Tamil, Kannada and Hindi (Janma Kundali). Each reads the same calculated chart through its own region's terminology, calendar and emphasis.",
@@ -193,52 +197,10 @@ export const COPY = {
     method: "Language, layout and regional presentation change how your chart is described. The calculation never changes.",
   },
   compatibility: {
-    eyebrow: `Compatibility · ${PRICE.compatibility} for two`,
-    headline: ["Two charts.", "A connection worth understanding."],
-    supporting: "See how you communicate, where you complement each other, and what may need more understanding. In love, friendship, family or work.",
-    price: `Two people. One connection report. ${PRICE.compatibility}.`,
-    line: "Two people · One connection category · PDF included",
     how: "Enter both people's birth details. Add a note about each person, and shared context if you wish.",
+    line: "Two people · One connection category · PDF included",
     outputs: ["Communication", "Shared strengths", "Potential friction", "The dynamics of your connection", "Prompts to discuss together"],
-    limits: "No compatibility scores or percentages. The report never tells you whether to marry, part ways, hire each other or start a business.",
-  },
-  technology: {
-    headline: ["Calculated with care.", "Interpreted with context."],
-    body: "Our calculation engine builds your chart from the birth details you provide. Our AI then turns that chart into a structured interpretation, shaped by your tradition, your language and any notes you add.",
-    notes: "Your notes help us understand what matters to you. They remain what you told us, never discoveries credited to the stars.",
-    points: [
-      { title: "The chart is calculated, never guessed", body: "Every position comes from astronomical calculation. The AI interprets it. It never invents it." },
-      { title: "Uncertainty is shown, not hidden", body: "If your birth time leaves something open, your report says so and shows each possibility." },
-      { title: "Checked before you see it", body: "Every interpretation is checked automatically for structure, completeness and language before it becomes part of your report." },
-    ],
-  },
-  report: {
-    headline: "A report worth returning to.",
-    supporting: "Your chart, its interpretation and your key takeaways, brought together in one personal report to read online or keep as a PDF.",
-    features: [
-      { title: "A branded cover", body: "Your name, your report and your order reference." },
-      { title: "Readable chart diagrams", body: "Indian charts in both traditional layouts. Compatibility charts side by side." },
-      { title: "A clear structure", body: "From foundations to periods to summary, in a steady, readable order." },
-      { title: "A personal summary", body: "Your main themes, gathered at the end." },
-      { title: "Your questions, answered", body: "Each question you add, in a section of its own." },
-    ],
-  },
-  pricing: {
-    headline: "Simple prices. Paid once.",
-    supporting: "One payment. Online report and PDF included. No account, no subscription.",
-    plans: [
-      { key: "personal", title: "Your personal report", price: PRICE.personal, body: "One person. Your chosen tradition and language. Online report and PDF included.", href: "/start", cta: CTA.personal },
-      {
-        key: "questions",
-        title: "Your report, with your questions",
-        price: PRICE.personalWithQuestions,
-        body: "Everything in the personal report, plus answers to three questions.",
-        href: "/start?questions=1",
-        cta: `Add my questions · ${PRICE.personalWithQuestions}`,
-      },
-      { key: "compatibility", title: "Your connection report", price: PRICE.compatibility, body: "Two people. One selected connection. Online report and PDF included.", href: "/compatibility", cta: CTA.compatibility },
-    ],
-    footnote: "One tradition per purchase, Indian or Western. Questions can be added to personal reports only.",
+    limits: "No compatibility scores or percentages. The report never tells you whether to marry, part ways, hire each other or start a business. It explores astrological patterns; the decisions stay yours.",
   },
   disclaimer:
     "Astrology is an interpretive tradition, not scientifically validated prediction. Use your report for reflection, not as a substitute for professional advice.",

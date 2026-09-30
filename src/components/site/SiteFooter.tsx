@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { NAV_LINKS, POLICY_LINKS } from "@/config/site";
+import { NAV_LINKS, POLICY_LINKS, REPORT_LINKS } from "@/config/site";
 import { COPY } from "@/content/site-copy";
 import { Logo } from "./Logo";
 
@@ -15,7 +15,7 @@ export interface BusinessDetails {
 export function SiteFooter({ business }: { business: BusinessDetails }) {
   return (
     <footer className="bg-ink-950 text-ivory-200">
-      <div className="container-page grid gap-10 py-14 md:grid-cols-[1.5fr_1fr_1fr]">
+      <div className="container-page grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div>
           <Logo tone="light" />
           <p className="mt-4 max-w-sm font-display text-lg leading-snug text-ivory-100">
@@ -33,6 +33,18 @@ export function SiteFooter({ business }: { business: BusinessDetails }) {
             {business.supportPhone ? <span className="block">Phone: {business.supportPhone}</span> : null}
           </p>
         </div>
+        <nav aria-label="Reports">
+          <p className="mb-3 text-sm font-semibold text-ivory-50">Reports</p>
+          <ul className="space-y-2 text-sm">
+            {REPORT_LINKS.map((l) => (
+              <li key={l.href}>
+                <Link className="hover:text-ivory-50" href={l.href}>
+                  {l.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
         <nav aria-label="Site">
           <p className="mb-3 text-sm font-semibold text-ivory-50">Explore</p>
           <ul className="space-y-2 text-sm">

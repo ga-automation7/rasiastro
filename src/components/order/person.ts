@@ -111,18 +111,6 @@ export function knownInput(k: KnownState, tradition: TraditionCode | null) {
   };
 }
 
-/** Quick checks for immediate feedback (the server re-validates everything). */
-export function birthErrors(s: BirthFieldsState, prefix: string): Record<string, string> {
-  const e: Record<string, string> = {};
-  if (s.subjectName.trim().length < 2) e[`${prefix}.subjectName`] = "Please enter the full name.";
-  if (!s.day || !s.month || !s.year) e[`${prefix}.birthDate`] = "Please choose the day, month and year of birth.";
-  if (!s.timeCertainty) e[`${prefix}.timeCertainty`] = "Please tell us how sure you are of the birth time.";
-  if (s.timeCertainty && s.timeCertainty !== "unknown" && (!s.hour12 || !s.minute || !s.meridiem)) e[`${prefix}.birthTime`] = "Please choose the hour, minute and AM or PM.";
-  if (s.timeCertainty === "approximate" && !s.timeWindowMinutes) e[`${prefix}.timeWindowMinutes`] = "Please choose how far off the time could be.";
-  if (!s.place) e[`${prefix}.placeId`] = "Please search for the birthplace and choose it from the list.";
-  return e;
-}
-
 export function hasKnownDetails(k: KnownState): boolean {
   return Boolean(k.moonSign || k.nakshatra || k.ascendant || k.otherDetails);
 }

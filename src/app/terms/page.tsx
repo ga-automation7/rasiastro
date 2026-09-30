@@ -4,7 +4,7 @@ import { LegalPage, OperatorBlock, businessDetails } from "@/components/legal/Le
 import { REPORT_LANGUAGES } from "@/config/languages";
 import { COPY, PRICE } from "@/content/site-copy";
 
-export const metadata: Metadata = { title: "Terms of Service" };
+export const metadata: Metadata = { title: "Terms of Service", description: "The terms for buying and using Rasi Astro personal and compatibility astrology reports.", alternates: { canonical: "/terms" } };
 export const dynamic = "force-dynamic";
 
 export default function TermsPage() {

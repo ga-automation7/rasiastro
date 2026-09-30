@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage, businessDetails } from "@/components/legal/LegalPage";
 
-export const metadata: Metadata = { title: "Digital Delivery" };
+export const metadata: Metadata = { title: "Digital Delivery", description: "How and when Rasi Astro reports are delivered: web report, PDF and a private link by email.", alternates: { canonical: "/delivery-policy" } };
 export const dynamic = "force-dynamic";
 
 export default function DeliveryPolicyPage() {

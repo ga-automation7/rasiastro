@@ -5,7 +5,7 @@ import { getCheckoutAvailability } from "@/server/config/readiness";
 
 export const metadata: Metadata = {
   title: "Your personal report",
-  robots: { index: false, follow: false },
+  robots: { index: false, follow: true },
 };
 export const dynamic = "force-dynamic";
 
