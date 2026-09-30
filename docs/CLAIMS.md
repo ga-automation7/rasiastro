@@ -23,6 +23,7 @@ Check this list before adding or changing a claim. Reviewed 30 September 2026.
 | Looking back / looking ahead as possibilities; career, relationships, growth, money; summary | timeline and synthesis parts (`schema.ts`, `prompt-v1.ts`) |
 | Answers to purchased questions only | pipeline passes questions only for `report_with_questions` |
 | Unknown/approximate birth time handled honestly | `Fact` values (known / uncertain / omitted) and limitations text |
+| Order form: a time of day "covers its whole four hour span, and your report says which details could change within it"; "we never assume a time such as noon"; historical clock changes applied automatically | `src/components/order/birth-input.ts` (`APPROX_BLOCKS`: centre time ± 120 min, the existing approximate window); uncertain `Fact` values over the window; birth resolution with the place's historical time zone |
 | Compatibility: both charts, category-specific factors, communication, shared strengths, potential friction, category dynamics, prompts to discuss | `src/server/astrology/compatibility.ts`, `pair-schema.ts`, `pair-render.ts` |
 | No compatibility score or percentage; no directives to marry/separate/hire | analysis has no score; `pair-validate.ts` rejects scores; prompt rules |
 | Names, email, phone and birthplace not sent to the AI | `input.ts`, `pair-input.ts` (`maskNames`); tests |

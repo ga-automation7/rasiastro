@@ -7,8 +7,8 @@ import { OrderInputSchema, flattenIssues } from "@/domain/order-input";
 import { formatInr } from "@/domain/pricing";
 import type { LanguageCode, TraditionCode } from "@/config/languages";
 import { openPayment, postJson, recordFormStarted } from "./checkout";
-import { birthErrors } from "./person";
-import { StepBirth } from "./StepBirth.client";
+import { BirthDetailsStep } from "./BirthDetailsStep.client";
+import { personalBirthErrors } from "./birth-input";
 import { StepChoose } from "./StepChoose.client";
 import { StepContext } from "./StepContext.client";
 import { StepReview, type PreviewResult } from "./StepReview.client";
@@ -28,7 +28,13 @@ function stepErrors(step: StepId, s: WizardState): Record<string, string> {
     if (!s.tradition) e.tradition = "Please choose a tradition.";
     if (!s.language) e.language = "Please choose a report language.";
   }
-  if (step === 2) Object.assign(e, birthErrors(s, "birth"));
+  if (step === 2) {
+    // One problem at a time, in the order the fields appear, so nothing further down
+    // turns red before the visitor gets to it.
+    const all = personalBirthErrors(s);
+    const first = ["subjectName", "birthDate", "timeCertainty", "birthTime", "timeWindowMinutes", "placeId"].map((k) => `birth.${k}`).find((k) => all[k]);
+    if (first) e[first] = all[first]!;
+  }
   if (step === 3 && s.includeQuestions) {
     s.questions.forEach((q, i) => {
       if (q.trim().length < 10) e[`questions.${i}`] = "Please write at least 10 characters, or remove the questions.";
@@ -202,29 +208,61 @@ export function OrderWizard({
   };
 
   const total = state.includeQuestions ? PRICING.report.amountPaise + PRICING.questionsAddon.amountPaise : PRICING.report.amountPaise;
+  const birthReady = step === 2 && Object.keys(personalBirthErrors(state)).length === 0;
 
   return (
+    <div className="relative isolate overflow-hidden">
+      {/* Depth without distraction: warm light, faint orbits, a soft vignette. */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_45%_at_50%_0%,rgb(247_236_210/0.9),transparent_70%),radial-gradient(ellipse_120%_90%_at_50%_40%,transparent_55%,rgb(122_86_26/0.07))]" />
+        <svg viewBox="0 0 800 800" className="absolute -right-64 top-24 h-[46rem] w-[46rem] opacity-[0.22]" fill="none" stroke="var(--color-gold-500)">
+          <circle cx="400" cy="400" r="390" strokeWidth="0.8" />
+          <circle cx="400" cy="400" r="300" strokeWidth="0.6" strokeDasharray="2 7" />
+          <circle cx="400" cy="400" r="210" strokeWidth="0.6" />
+          <circle cx="400" cy="10" r="3.5" fill="var(--color-gold-500)" stroke="none" />
+          <circle cx="190" cy="400" r="2.5" fill="var(--color-gold-500)" stroke="none" />
+        </svg>
+      </div>
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
-      <nav aria-label="Order steps" className="mb-8">
-        <ol className="grid grid-cols-4 gap-2">
+      <nav aria-label="Order steps" className="mb-10">
+        <div className="flex items-center justify-between text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-muted">
+          <span aria-current="step">
+            Step {step} of {STEPS.length}
+          </span>
+          {step === 2 ? <span className="hidden sm:inline">Personal report · {formatInr(PRICING.report.amountPaise)}</span> : null}
+        </div>
+        <ol className="mt-3 grid grid-cols-4 gap-1.5">
           {STEPS.map((s) => (
-            <li key={s.id}>
-              <div className={`h-1.5 rounded-full transition-colors duration-300 ${s.id <= step ? "bg-vermilion-600" : "bg-ivory-300"}`} />
-              <p className={`mt-2 hidden text-xs font-semibold sm:block ${s.id === step ? "text-ink-900" : "text-muted"}`} aria-current={s.id === step ? "step" : undefined}>
+            <li key={s.id} className="relative h-[3px] overflow-hidden rounded-full bg-ivory-300/80">
+              <span className="sr-only">
                 {s.id}. {s.title}
-              </p>
+                {s.id < step ? " (done)" : s.id === step ? " (current)" : ""}
+              </span>
+              <span
+                aria-hidden="true"
+                className={`absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-gold-500 to-gold-300 transition-[width] duration-700 ease-[var(--ease-soft)] ${s.id < step ? "w-full" : s.id === step ? "w-1/2" : "w-0"}`}
+              />
             </li>
           ))}
         </ol>
-        <p className="mt-2 text-sm text-muted sm:hidden">
-          Step {step} of 4: {STEPS[step - 1]!.title}
-        </p>
       </nav>
 
-      <p className="eyebrow">Personal report · {formatInr(PRICING.report.amountPaise)}</p>
-      <h1 ref={headingRef} tabIndex={-1} className="h-section mt-2 text-ink-950 outline-none">
-        {STEPS[step - 1]!.title}
-      </h1>
+      {step === 2 ? (
+        <header className="step-reveal">
+          <p className="eyebrow">Your birth details</p>
+          <h1 ref={headingRef} tabIndex={-1} className="h-section mt-2 text-ink-950 outline-none">
+            Let&apos;s find your chart.
+          </h1>
+          <p className="lede mt-3 max-w-xl">A few details about the moment you were born are all we need to calculate it.</p>
+        </header>
+      ) : (
+        <>
+          <p className="eyebrow">Personal report · {formatInr(PRICING.report.amountPaise)}</p>
+          <h1 ref={headingRef} tabIndex={-1} className="h-section mt-2 text-ink-950 outline-none">
+            {STEPS[step - 1]!.title}
+          </h1>
+        </>
+      )}
       {banner ? (
         <p role="alert" className="mt-4 rounded-xl border border-night-600/30 bg-white p-4 text-sm">
           {banner}
@@ -232,7 +270,7 @@ export function OrderWizard({
       ) : null}
 
       <form
-        className="mt-8"
+        className="relative mt-8 rounded-[1.75rem] border border-ivory-300/80 bg-ivory-50/95 p-5 shadow-[0_1px_0_rgb(255_255_255/0.9)_inset,0_30px_60px_-40px_rgb(10_21_35/0.35),0_8px_20px_-14px_rgb(10_21_35/0.15)] sm:p-9"
         noValidate
         onSubmit={(e) => {
           e.preventDefault();
@@ -240,7 +278,7 @@ export function OrderWizard({
         }}
       >
         {step === 1 ? <StepChoose tradition={state.tradition} language={state.language} onChange={update} errors={errors} /> : null}
-        {step === 2 ? <StepBirth state={state} onChange={update} errors={errors} /> : null}
+        {step === 2 ? <BirthDetailsStep value={state} onChange={update} errors={errors} tradition={state.tradition} /> : null}
         {step === 3 ? <StepContext state={state} onChange={update} errors={errors} /> : null}
         {step === 4 ? (
           <StepReview
@@ -257,17 +295,32 @@ export function OrderWizard({
           />
         ) : null}
 
-        <div className="mt-10 flex flex-col-reverse gap-3 border-t border-ivory-300 pt-6 sm:flex-row sm:items-center sm:justify-between">
+        {step === 2 && birthReady ? (
+          <p className="step-reveal mt-10 flex items-center justify-end gap-2 text-sm font-medium text-teal-700" aria-live="polite">
+            <svg aria-hidden="true" viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3.5 8.5 6.5 11.5 12.5 4.5" />
+            </svg>
+            Everything we need to calculate your chart.
+          </p>
+        ) : null}
+        <div className={`${step === 2 && birthReady ? "mt-4" : "mt-10"} flex flex-col-reverse gap-3 border-t border-ivory-300/80 pt-6 sm:flex-row sm:items-center sm:justify-between`}>
           {step > 1 ? (
-            <button type="button" className="btn btn-ghost text-ink-800" onClick={() => goTo((step - 1) as StepId)} disabled={submitting}>
-              Back
+            <button type="button" className="min-h-12 self-start rounded-lg px-2 text-[0.95rem] font-semibold text-ink-700 transition-colors hover:text-ink-950 sm:self-auto" onClick={() => goTo((step - 1) as StepId)} disabled={submitting}>
+              <span aria-hidden="true">← </span>Back
             </button>
           ) : (
             <span />
           )}
           {step < 4 ? (
-            <button type="submit" className="btn btn-dark">
+            <button
+              type="submit"
+              className={`btn group min-w-44 gap-2 text-[1rem] transition-all duration-300 ${step === 2 && !birthReady ? "bg-ink-900/55 text-ivory-50 shadow-none" : "btn-dark shadow-[0_12px_28px_-14px_rgb(10_21_35/0.7)]"}`}
+              aria-disabled={step === 2 && !birthReady ? true : undefined}
+            >
               Continue
+              <span aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-0.5">
+                →
+              </span>
             </button>
           ) : (
             <button type="submit" className="btn btn-primary text-base" disabled={submitting || !checkoutAvailable || previewLoading || !preview} aria-disabled={submitting || !checkoutAvailable}>
@@ -277,6 +330,7 @@ export function OrderWizard({
         </div>
         {step === 4 ? <p className="mt-3 text-right text-xs text-muted">You pay on our payment partner&apos;s secure page. We never see your card or UPI details.</p> : null}
       </form>
+    </div>
     </div>
   );
 }

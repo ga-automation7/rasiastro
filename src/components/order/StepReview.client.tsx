@@ -4,7 +4,8 @@ import { REPORT_LANGUAGES, TRADITIONS } from "@/config/languages";
 import { NAKSHATRA_NAMES_EN, SIGN_NAMES_EN } from "@/domain/astrology/constants";
 import { PRICE } from "@/content/site-copy";
 import { CheckoutDetails, PriceSummary, type QuoteView } from "./CheckoutDetails.client";
-import { dateLabel, placeLabel, time24, timeLabel } from "./person";
+import { personalTimeLabel } from "./birth-input";
+import { dateLabel, placeLabel, time24 } from "./person";
 import type { StepId, WizardState } from "./wizard-state";
 
 export interface PreviewResult {
@@ -100,7 +101,7 @@ export function StepReview({
           {dateLabel(state)}
         </ReviewRow>
         <ReviewRow label="Time of birth" onEdit={() => onEdit(2)}>
-          {timeLabel(state)}
+          {personalTimeLabel(state)}
         </ReviewRow>
         <ReviewRow label="Birthplace" onEdit={() => onEdit(2)}>
           {state.place ? placeLabel(state.place) : "-"}
