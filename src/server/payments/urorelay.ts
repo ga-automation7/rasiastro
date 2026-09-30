@@ -236,7 +236,10 @@ export class UroRelayProvider implements PaymentProvider {
       // UroPay's own short message (never contains our key or secret).
       const detail = `${status === null ? "no answer" : `HTTP ${status}`}${error instanceof PaymentProviderError && error.providerCode ? `: ${error.providerCode}` : ""}`;
       if (status === 401) return { result: "rejected", detail };
-      if (status === 404 || status === 400) return { result: "accepted", detail };
+      // Any business answer means authentication passed (UroPay checks the key and secret first):
+      // not found, bad input, or 403 "that UPI reference number has already been used".
+      const message = error instanceof PaymentProviderError ? (error.providerCode ?? "") : "";
+      if (status === 404 || status === 400 || (status === 403 && /reference/i.test(message))) return { result: "accepted", detail };
       return { result: "unknown", detail };
     }
   }
