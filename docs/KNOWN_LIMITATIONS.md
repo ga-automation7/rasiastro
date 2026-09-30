@@ -1,6 +1,7 @@
 # Known limitations and unverified parts
 
-Honest list of what is not done, not verified, or deliberately simple in version 1.
+Honest list of what is not done, not verified, or deliberately simple. Updated 29 September 2026
+(compatibility reports, sandbox mode and the redesign). The launch status is in LAUNCH_CHECKLIST.md.
 
 ## Not yet verified with real accounts
 
@@ -9,9 +10,10 @@ automated tests with fakes, but have **not** been exercised against the real ser
 because no credentials were available during development:
 
 - **Cashfree** order creation, hosted checkout redirect, real webhooks (signature format,
-  `x-idempotency-key` header) and status lookups. Test in sandbox before launch (SETUP.md §9).
+  `x-idempotency-key` header) and status lookups. Test in sandbox before launch (SETUP.md §7).
 - **OpenAI** report generation with a real model: prose quality in each language, token
-  usage, latency and cost per report. Read several real reports per language first.
+  usage, latency and cost per report, for personal reports and each compatibility
+  category. Read several real reports per language first.
 - **Resend** delivery (domain verification, inbox placement, spam filtering).
 - **Supabase** Postgres (through the transaction pooler) and Storage (signed URLs).
   The same SQL was tested on PGlite (real PostgreSQL 17 compiled to WebAssembly).
@@ -34,12 +36,29 @@ because no credentials were available during development:
   aspect orbs.
 - Kshaya (lost) lunar months are not handled (extremely rare). Adhika months are.
 - The panchanga yoga is calculated but not shown in reports; karana is not calculated.
-- The Western report has no chart wheel diagram (tables only); Indian reports include
-  South and North Indian chart diagrams.
+- The personal Western report has no chart wheel diagram (tables only); Indian reports
+  include fixed-sign (South Indian style) and house-based (North Indian style) diagrams.
+  Western compatibility reports include a two-ring wheel.
+- Divisional charts (Navamsa D9 and others) are not calculated.
 - Timelines are relative to the payment date and look about two years ahead.
 - Historical time zones follow the IANA tz database bundled with Node.js. Before 1970 some
   regions' local practices may differ from tz data; very old or unusual records should be
   double-checked.
+
+## Compatibility reports
+
+- No compatibility score or points total (Ashtakoota/porutham) is given, by design: the
+  traditional totals assume bride/groom roles. Individual traditional factors (Moon-sign
+  relationship, Tara, Gana, Graha Maitri; Yoni and Nadi for romantic categories) are shown
+  with their certainty. Rajju, Vedha, Mahendra and Stree Deergha are not calculated.
+- Western compatibility uses cross-chart aspects for the seven classical planets and the
+  Ascendant (only with an exact birth time), house overlays (only when the receiving
+  chart's time is exact) and element balance. Composite and Davison charts are not built.
+- When a birth time is unknown, aspect orbs are shown as approximate ("≈") from the middle
+  of the possible range, and factors that could change during the day are shown as
+  possibilities.
+- Names are masked in notes before they reach the AI by matching the names exactly as
+  typed; nicknames or other spellings in notes are not detected.
 
 ## Language and content
 
@@ -49,7 +68,11 @@ because no credentials were available during development:
 - AI output is validated for structure, ids, lengths, question count and script, not for
   astrological soundness or tone. Safety rules are in the prompt; spot-check reports.
 - Demo mode shows placeholder text, not a real interpretation (clearly labelled).
-- Policy pages are sensible drafts, not legal advice; business details must be filled in.
+- Policy pages are careful drafts, not legal advice; business details must be filled in
+  and a lawyer should review them (docs/LEGAL_READINESS.md).
+- Regional perspectives exist for Tamil, Kannada and Hindi (Janma Kundali). Telugu and
+  Malayalam are report languages without a dedicated regional perspective.
+- The public sample report was removed; there are no sample previews on the site.
 
 ## Scale and operations (see ARCHITECTURE.md)
 

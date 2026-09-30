@@ -104,7 +104,7 @@ export function pairFactorsForModel(analysis: PairAnalysis, romantic: boolean): 
   const out: FactForModel[] = analysis.interAspects.map((a, i) => ({
     id: `aspect_${i + 1}`,
     label: `{{A}}'s ${POINT_NAME(a.a)} ${a.type} {{B}}'s ${POINT_NAME(a.b)}${a.focus ? " (emphasised for this category)" : ""}`,
-    value: a.certainty === "known" ? (a.orb !== null ? `orb ${a.orb}°` : "holds for every possible birth time") : "possible: holds for some but not all possible birth times",
+    value: a.certainty === "known" ? (a.orb !== null ? `orb ${a.orbApproximate ? "about " : ""}${a.orb}°` : "holds for every possible birth time") : "possible: holds for some but not all possible birth times",
     certainty: a.certainty,
   }));
   for (const o of analysis.overlays) {

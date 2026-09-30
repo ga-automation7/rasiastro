@@ -1,5 +1,5 @@
 import { getEnv } from "../config/env";
-import { chooseProviders, getCheckoutAvailability, getConfigChecks } from "../config/readiness";
+import { chooseProviders, getCheckoutAvailability, getConfigChecks, getProductChecks, getSiteState } from "../config/readiness";
 import { getDb } from "../db";
 import { getSchemaVersion } from "../db/migrate";
 import { countUndispatched } from "../jobs/outbox";
@@ -27,14 +27,21 @@ export async function getHealthReport() {
   } catch (error) {
     database = { ...database, error: (error as Error).name };
   }
-  const checkout = getCheckoutAvailability(env);
+  const personal = getCheckoutAvailability(env, "personal");
+  const compatibility = getCheckoutAvailability(env, "compatibility");
+  const checkout = { available: personal.available || compatibility.available };
   return {
     status: database.ok && checkout.available && (places?.ok ?? false) ? "ok" : "degraded",
     mode: env.APP_MODE,
+    site: getSiteState(env).kind,
+    products: {
+      personal: personal.available && (places?.ok ?? false),
+      compatibility: compatibility.available && (places?.ok ?? false),
+    },
     providers: chooseProviders(env),
     pdfBrowser: resolveBrowserSource(),
     checkoutAvailable: checkout.available && (places?.ok ?? false),
-    checks: getConfigChecks(env).map((c) => ({ key: c.key, label: c.label, ok: c.ok, detail: c.ok ? null : c.detail })),
+    checks: [...getConfigChecks(env), ...getProductChecks("personal", env), ...getProductChecks("compatibility", env)].map((c) => ({ key: c.key, label: c.label, ok: c.ok, detail: c.ok ? null : c.detail })),
     database,
     places,
     backlog,

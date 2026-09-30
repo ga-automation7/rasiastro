@@ -7,7 +7,9 @@ import { getHealthReport } from "../src/server/ops/health";
 
 try {
   const health = await getHealthReport();
-  console.log(`\nStatus: ${health.status.toUpperCase()} · mode: ${health.mode} · checkout available: ${health.checkoutAvailable ? "yes" : "NO"}`);
+  console.log(
+    `\nStatus: ${health.status.toUpperCase()} · mode: ${health.mode} · site: ${health.site} · personal orders: ${health.products.personal ? "open" : "CLOSED"} · compatibility orders: ${health.products.compatibility ? "open" : "CLOSED"}`,
+  );
   console.log(`Providers: ${JSON.stringify(health.providers)} · PDF browser: ${health.pdfBrowser}`);
   for (const c of health.checks) console.log(`  ${c.ok ? "✓" : "✗"} ${c.label}${c.ok ? "" : ` - ${c.detail}`}`);
   console.log(`Database: ${health.database.ok ? `ok (schema ${health.database.schemaVersion})` : "UNREACHABLE"}`);

@@ -1,64 +1,48 @@
-# Replacing the homepage hero image or animation
+# Homepage artwork: replacing the images
 
-The hero (top section of the homepage) shows a placeholder starfield. You can replace it
-with your own image and/or looping video **without changing any page code**.
+The homepage uses two paintings:
 
-## 1. Prepare your files
-
-| File | Purpose | Recommended |
+| Artwork | Original (full quality, kept in git) | Where it appears |
 | --- | --- | --- |
-| Poster image | Always shown first; used alone on phones, slow connections and for people who prefer reduced motion | 2400×1350 px, WebP or AVIF (or JPG), under 250 KB |
-| Mobile poster (optional) | A portrait crop for phones | 1080×1600 px, under 150 KB |
-| Video (optional) | Gentle loop on tablets and desktops | 8-15 s seamless loop, no sound, 1920×1080, WebM **and** MP4, each under 2.5 MB |
+| Elephant | `assets-src/hero-elephant-original.png` | The hero (top of the homepage) |
+| Sun and moon | `assets-src/compatibility-sun-moon-original.png` | The compatibility section only |
 
-Keep the important part of the artwork on the **right** or centre: the headline sits on
-the left over a dark gradient. Avoid text inside the artwork (it would not be translated
-or readable on phones). Only use artwork you own or have licensed.
+Web versions are generated into `public/art/` and served through Next.js image
+optimisation (each visitor gets a right-sized AVIF/WebP). Paths, sizes, focal points and
+tiny blurred placeholders are recorded in `src/config/art-manifest.json` and used from
+`src/config/art.ts`. Both images are decorative, so their alt text is empty; the
+headline carries the meaning.
 
-## 2. Put them in the project
+## Replacing an image
 
-Copy the files into `public/hero/`, for example:
+1. Save the new original in `assets-src/` **with the same file name** (PNG or JPG,
+   at least 1600 px wide). Use only artwork you own or have licensed.
+2. Run:
+   ```bash
+   npm run images:build
+   ```
+   This writes `public/art/*.webp`, the phone crop of the hero, the social-preview image
+   (`public/art/og-rasi-astro.jpg`, 1200×630) and the manifest.
+3. If the composition changed, adjust in `src/config/art.ts`:
+   - `hero.textSafeWidth`: the share of the image width on the **left** that is empty
+     enough for the headline (currently 0.38). The headline never goes beyond it.
+   - `hero.desktop.focal` / `hero.mobile.focal`: which part must stay visible when the
+     picture is trimmed (CSS `object-position`, e.g. `"68% 38%"`).
+   - `hero.parchment` / `compatibility.night`: the painting's background colour, so
+     the page blends into it.
+   - The phone crop rectangle is in `scripts/build-images.ts` (`heroMobile`).
+4. Check the page at 360, 390, 768 and 1440 px wide
+   (`npx tsx scripts/lib/screenshots.ts / --widths=360,390,768,1440`).
 
-```
-public/hero/hero-poster.webp
-public/hero/hero-poster-mobile.webp
-public/hero/hero-loop.webm
-public/hero/hero-loop.mp4
-```
+## Layout rules the code follows
 
-## 3. Point the site at them
-
-Edit **`src/config/hero-media.ts`** (the only file to change):
-
-```ts
-export const HERO_MEDIA: HeroMediaConfig = {
-  poster: { src: "/hero/hero-poster.webp", alt: "", objectPosition: "60% 40%" },
-  mobilePoster: { src: "/hero/hero-poster-mobile.webp", objectPosition: "50% 30%" },
-  video: {
-    sources: [
-      { src: "/hero/hero-loop.webm", type: "video/webm" },
-      { src: "/hero/hero-loop.mp4", type: "video/mp4" },
-    ],
-    minViewportWidth: 768, // phones below this width get the still image only
-  },
-  overlay: "linear-gradient(180deg, rgba(13,11,38,0.35) 0%, rgba(13,11,38,0.65) 55%, rgba(13,11,38,0.95) 100%)",
-  animatedPlaceholder: false, // turn off the placeholder twinkle
-};
-```
-
-- `objectPosition` chooses which part of the image stays visible when it is cropped
-  ("50% 50%" = centre; "70% 40%" = a little right and up).
-- `alt` stays empty for decorative artwork. If the image conveys meaning, describe it.
-- `overlay` keeps the white headline readable. If your artwork is bright, make the
-  numbers larger (up to 0.9); if it is already dark, smaller.
-- Set `video: null` to use only the image.
-
-## 4. Check it
-
-Run `npm run dev` and look at the homepage on a phone-sized window and a desktop window.
-The headline must be easy to read everywhere. With "reduce motion" turned on in your
-operating system, only the still image should appear.
-
-The component (`src/components/hero/HeroMedia.client.tsx`) already handles: lazy loading
-the video only when visible, skipping video on small screens, data-saver and reduced
-motion, poster fallback, responsive cropping and the contrast overlay.
+- **Hero, desktop:** the painting keeps its own proportions (never stretched); if the
+  height is limited it is trimmed at the top/bottom, never the sides, so the text area
+  stays over the empty parchment. It loads eagerly with high priority on the parchment
+  colour, so the hero is never blank. Nothing animates the flattened artwork.
+- **Hero, phones/tablets:** headline and buttons first on the parchment colour, then the
+  elephant crop, fading in from the parchment.
+- **Compatibility, desktop:** the sun-and-moon painting spans the full width anchored to
+  the bottom, fading in at its top edge; the content sits in the dark centre. Phones: the
+  content first, then the painting. It is lazy-loaded (below the fold).
+- No fixed (parallax) backgrounds.

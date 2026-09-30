@@ -14,6 +14,7 @@ export function PlaceSearch({ value, onChange, error }: { value: PlaceOption | n
   const [results, setResults] = useState<PlaceOption[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const controller = useRef<AbortController | null>(null);
 
   const searching = !value && query.trim().length >= 2;
@@ -28,7 +29,13 @@ export function PlaceSearch({ value, onChange, error }: { value: PlaceOption | n
       setFetchError(null);
       try {
         const res = await fetch(`/api/places?q=${encodeURIComponent(query.trim())}`, { signal: c.signal });
-        if (!res.ok) throw new Error(res.status === 429 ? "Too many searches - please wait a moment." : "Search is unavailable right now.");
+        if (!res.ok) {
+          throw new Error(
+            res.status === 429
+              ? "Too many searches in a short time. Please wait a minute, then try again."
+              : "We couldn't search places just now. Please try again in a moment.",
+          );
+        }
         const body = (await res.json()) as { places: PlaceOption[] };
         setResults(body.places);
       } catch (e) {
@@ -38,7 +45,7 @@ export function PlaceSearch({ value, onChange, error }: { value: PlaceOption | n
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [query, searching]);
+  }, [query, searching, attempt]);
 
   if (value) {
     return (
@@ -79,11 +86,18 @@ export function PlaceSearch({ value, onChange, error }: { value: PlaceOption | n
         aria-describedby={`${inputId}-hint`}
       />
       <p id={`${inputId}-hint`} className="field-hint">
-        Choose the matching place from the list. Village not listed? Pick the nearest town - a few kilometres make very little difference.
+        Choose the matching place from the list. Village not listed? Pick the nearest town; a few kilometres make very little difference.
       </p>
       <div aria-live="polite" className="mt-2">
         {loading && searching ? <p className="text-sm text-muted">Searching…</p> : null}
-        {fetchError ? <p className="field-error">{fetchError}</p> : null}
+        {fetchError ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="field-error !mt-0">{fetchError}</p>
+            <button type="button" className="text-sm font-semibold text-ink-700 underline underline-offset-2" onClick={() => setAttempt((n) => n + 1)}>
+              Try again
+            </button>
+          </div>
+        ) : null}
         {shown && shown.length === 0 && !loading ? <p className="text-sm text-muted">No matching places found. Try another spelling or a nearby town.</p> : null}
         {shown && shown.length > 0 ? (
           <fieldset className="mt-1">

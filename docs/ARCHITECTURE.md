@@ -24,6 +24,8 @@ flowchart LR
 | Built-in chart engine on Astronomy Engine (MIT) | No per-chart API cost or licence risk (Swiss Ephemeris is AGPL/commercial). Behind `CalculationProvider`, so a licensed engine or API can replace it. |
 | AI writes prose only, from structured facts | Positions are never invented; output is schema-validated, versioned and stored once. |
 | Report split into 3 AI parts, stored separately | Each call fits time/token limits; retries never pay twice for finished parts. |
+| Two products, one pipeline | Personal and compatibility orders share the order, payment, job, PDF and delivery machinery; `orders.product` selects the calculation (one chart, or two charts + pair analysis) and the AI parts (`core/timeline/synthesis` or `pair_core/pair_dynamics/pair_synthesis`). Participants are rows 1 and 2 of `birth_details` with stable `participant_id`s. |
+| One site state | `getSiteState()` (demo, sandbox, live, closed) drives the banner and every order button, with a switch per product, so the site can never show contradictory messages. |
 | Chromium for PDFs | Only a real browser engine shapes Tamil/Indic scripts correctly; verified per language. |
 | Outbox + Inngest | A verified payment and its work are committed together; Inngest retries each step durably. A 10-minute sweeper recovers missed webhooks, lost dispatches and stalled jobs. |
 | No accounts; token links | Simplest safe model for a one-off purchase; tokens hashed, expiring, recoverable by email. |
@@ -35,8 +37,10 @@ flowchart LR
 No load test has been run; these are engineering estimates, not guarantees.
 
 - **Web requests** are stateless and scale with Vercel automatically.
-- **Report generation** is limited by `REPORT_CONCURRENCY` (default 3 at a time) to stay
-  within AI rate limits and cost; each report takes roughly 1-5 minutes (mostly AI time),
+- **Report generation** is limited by `REPORT_CONCURRENCY` (default 3 at a time **per
+  product**, so compatibility orders never starve personal ones) to stay within AI rate
+  limits and cost. Each step runs in its own function call within Vercel's 300-second
+  limit; each report takes roughly 1-5 minutes (mostly AI time),
   so the default comfortably handles dozens of orders an hour. Raise the concurrency as
   your OpenAI rate limits and Inngest plan allow.
 - **Database**: indexed lookups; the Supabase free/entry tier is fine for launch. Upgrade
@@ -56,5 +60,9 @@ No load test has been run; these are engineering estimates, not guarantees.
 | Report wording / labels | `src/i18n/*.ts` |
 | AI instructions | `src/server/interpretation/prompt-v1.ts` (bump `PROMPT_VERSION`) |
 | Report layout / PDF styling | `src/server/reports/render.ts`, `pdf.ts`, `chart-svg.ts` |
-| Hero artwork | `src/config/hero-media.ts` (see HERO_ASSETS.md) |
+| Homepage copy | `src/content/site-copy.ts` (check docs/CLAIMS.md) |
+| Homepage artwork | `assets-src/` + `npm run images:build` + `src/config/art.ts` (see HERO_ASSETS.md) |
+| Compatibility categories, factors, themes | `src/config/compatibility.ts` |
+| Compatibility calculation | `src/server/astrology/compatibility.ts` (bump `PAIR_CALCULATION_VERSION`) |
+| Compatibility AI instructions | `src/server/interpretation/pair-prompt.ts` (bump `PAIR_PROMPT_VERSION`) |
 | Policy pages | `src/app/privacy`, `terms`, `refund-policy`, `delivery-policy`, `contact` |

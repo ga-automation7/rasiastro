@@ -79,8 +79,10 @@ export interface InterAspect {
   a: PairPoint;
   b: PairPoint;
   type: Aspect["type"];
-  /** Orb at the stated times (null when a stated time is unknown). */
+  /** Orb at the stated times; when a birth time is unknown, the orb at the middle of the possible range. */
   orb: number | null;
+  /** True when the orb is taken from the middle of an unknown birth time's range. */
+  orbApproximate?: boolean;
   /** "uncertain": holds for some but not all possible birth times. */
   certainty: "known" | "uncertain";
   /** True when this pair of points is emphasised for the chosen category. */

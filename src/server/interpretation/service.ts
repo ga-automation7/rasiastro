@@ -37,6 +37,13 @@ export function getInterpretationProvider(product: Product = "personal"): Interp
   });
 }
 
+/**
+ * Time one pipeline step may spend on AI calls. Each Inngest step runs in one function
+ * invocation, limited to 300 s on Vercel (src/app/api/inngest/route.ts); this leaves
+ * room for database work around the call.
+ */
+const STEP_TIME_BUDGET_MS = 280_000;
+
 export class AiBudgetExceededError extends RetriableAiError {
   constructor() {
     super("budget_exceeded", "Daily AI token budget reached; generation will resume later");
@@ -122,6 +129,7 @@ async function generateStored<T>(db: SqlExecutor, spec: GenerationSpec<T>): Prom
   }
 
   let lastError: Error | null = null;
+  const started = Date.now();
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     try {
       const generated = await provider.generate(spec.part, spec.prompt, spec.input);
@@ -141,7 +149,11 @@ async function generateStored<T>(db: SqlExecutor, spec: GenerationSpec<T>): Prom
       }
     } catch (error) {
       lastError = error as Error;
-      if (error instanceof InvalidInterpretationError && attempt < 2) {
+      // One immediate corrective retry, but only if it can finish inside the hosting
+      // platform's time limit for a single step; otherwise the job runner retries the
+      // step in a fresh invocation (the stored parts are kept either way).
+      const fitsInStep = Date.now() - started + getEnv().AI_TIMEOUT_MS <= STEP_TIME_BUDGET_MS;
+      if (error instanceof InvalidInterpretationError && attempt < 2 && fitsInStep) {
         log.warn("AI output rejected; retrying once", { orderId: spec.orderId, part: spec.part, error });
         continue;
       }

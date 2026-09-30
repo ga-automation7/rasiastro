@@ -30,13 +30,13 @@ export const en: ReportDictionary = {
   },
   notes: {
     regionalPerspectives:
-      "These sections present the same calculated chart through Tamil, Kannada and North Indian (Hindi-context) naming, calendars and chart layouts. They are presentation and interpretation perspectives, not separate calculation systems.",
+      "These sections present the same calculated chart through Tamil, Kannada and Hindi (Janma Kundali) naming, calendars and chart layouts. They are presentation and interpretation perspectives, not separate calculation systems.",
     westernPerspectives: "Both sections read the same tropical chart: one with a modern psychological approach, one with traditional techniques.",
     lookingBackNote: "These are possible patterns you may recognise from these periods - interpretations, not known facts about your life.",
     demoBanner: "DEMO MODE - sample data and placeholder text. No real payment was taken.",
     sampleBanner: "SAMPLE REPORT - fictional person, illustrative text.",
     noPeriods: "No periods to show for this section.",
-    northChartNeedsTime: "The North Indian chart is arranged around the Lagna, which needs a known birth time.",
+    northChartNeedsTime: "The house-based chart is arranged around the Lagna, which needs a known birth time.",
   },
   labels: {
     name: "Name",
@@ -96,8 +96,8 @@ export const en: ReportDictionary = {
     personalGrowth: "Personal development",
     money: "Money and resources",
     question: (n) => `Question ${n}`,
-    southIndianChart: "South Indian chart (Rasi)",
-    northIndianChart: "North Indian chart (Lagna)",
+    southIndianChart: "Fixed-sign chart (South Indian style)",
+    northIndianChart: "House-based chart (North Indian style)",
     dashaShift: (d) => `Because the birth time is approximate, these dates may shift by up to ${d} days.`,
     downloadPdf: "Download PDF",
     page: "Page",
@@ -182,7 +182,7 @@ export const en: ReportDictionary = {
   },
   limitations: {
     timeUnknownIndian:
-      "Your birth time is not known, so the Lagna, the house positions, the North Indian chart and the exact dasha dates are not calculated. Facts that could change during the day are shown as a set of possibilities.",
+      "Your birth time is not known, so the Lagna, the house positions, the house-based chart and the exact dasha dates are not calculated. Facts that could change during the day are shown as a set of possibilities.",
     timeUnknownWestern:
       "Your birth time is not known, so the Rising sign, Midheaven and houses are not calculated. Facts that could change during the day (often the Moon) are shown as a set of possibilities.",
     timeApproximate: (m) => `Your birth time is approximate (± ${m} minutes). Anything that changes within that window is shown as a set of possibilities, and time-sensitive dates may shift.`,

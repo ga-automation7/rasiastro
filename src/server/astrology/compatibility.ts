@@ -32,7 +32,7 @@ import { ASPECT_ORBS } from "./western";
  * Moon sign or nakshatra open, every combination of candidates is evaluated; a factor
  * is "known" only if all combinations agree.
  */
-export const PAIR_CALCULATION_VERSION = "rasi-pair-1.0.0";
+export const PAIR_CALCULATION_VERSION = "rasi-pair-1.1.0";
 
 // ---------------------------------------------------------------------------
 // Generic helpers
@@ -297,12 +297,15 @@ export function interAspects(a: WesternChart, b: WesternChart, focus: readonly W
           if (orbFor(type, x, y) !== null) inside += 1;
         }
         if (inside === 0) continue;
-        const statedOrb = pa.stated !== null && pb.stated !== null ? orbFor(type, pa.stated, pb.stated) : null;
+        const mid = (p: PointRange) => p.stated ?? (p.range[0] + p.range[1]) / 2;
+        const approximate = pa.stated === null || pb.stated === null;
+        const statedOrb = orbFor(type, mid(pa), mid(pb));
         found.push({
           a: pa.key,
           b: pb.key,
           type,
           orb: statedOrb === null ? null : Math.round(statedOrb * 10) / 10,
+          ...(approximate && statedOrb !== null ? { orbApproximate: true } : {}),
           certainty: inside === total ? "known" : "uncertain",
           focus: focus.includes(pa.key as WesternBody) || focus.includes(pb.key as WesternBody),
         });

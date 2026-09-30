@@ -49,7 +49,6 @@ const EnvSchema = z.object({
   CASHFREE_CLIENT_SECRET: optionalString,
   CASHFREE_API_VERSION: z.string().default("2026-01-01"),
 
-  AI_PROVIDER: z.enum(["openai"]).default("openai"),
   OPENAI_API_KEY: optionalString,
   /** Must be a model your OpenAI account can use. There is deliberately no default. */
   OPENAI_MODEL: optionalString,

@@ -164,7 +164,7 @@ function factorsSection(ctx: Ctx): RawHtml {
     const rows = a.interAspects.map((x) => [
       `${ctx.names[0]}: ${pointName(ctx, x.a)} – ${ctx.names[1]}: ${pointName(ctx, x.b)}`,
       dict.aspects[x.type],
-      x.certainty === "known" ? (x.orb !== null ? `${x.orb.toFixed(1)}°` : "") : pair.words.dependsOnTime,
+      x.certainty === "known" ? (x.orb !== null ? `${x.orbApproximate ? "≈" : ""}${x.orb.toFixed(1)}°` : "") : pair.words.dependsOnTime,
     ]);
     const overlays = a.overlays.map(
       (o) =>

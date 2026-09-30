@@ -5,7 +5,7 @@ import { languageInstruction, type InterpretationInput } from "./input";
  * Prompt version 1. Any wording change that could alter report content must bump
  * PROMPT_VERSION; the version is stored with every generated part.
  */
-export const PROMPT_VERSION = "prompt-v1.0";
+export const PROMPT_VERSION = "prompt-v1.1";
 
 const SHARED_RULES = `You write one part of a personalised astrology report for Rasi Astro.
 

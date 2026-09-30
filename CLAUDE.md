@@ -1,9 +1,16 @@
 # Rasi Astro - engineering guide
 
-Rasi Astro (rasiastro.com, "Your stars, your story.") sells personalised astrology
-reports: a customer enters birth details, picks a tradition (Indian/Vedic or Western)
-and a report language, optionally buys three questions, pays through Cashfree, and
-receives a web report + PDF by secure email link. **There are no customer accounts.**
+Rasi Astro (rasiastro.com) sells personalised astrology reports. Two products:
+
+- **Personal report** (₹49; +₹20 for three questions = ₹69): one person, one tradition
+  (Indian/Vedic or Western), one report language.
+- **Compatibility report** (₹39 for the pair): exactly two people, one connection
+  category (relationship, marriage, friendship, career & teamwork, business partnership,
+  family), one tradition, one language. No question add-on.
+
+Customers pay through Cashfree and receive a web report + PDF by private email link.
+**There are no customer accounts.** Positioning: "Centuries of tradition. Calculated by
+machines. Interpreted for you."
 
 Read this file before changing anything. The owner is not a programmer: keep the
 system simple, honest and well documented.
@@ -19,115 +26,114 @@ system simple, honest and well documented.
 | `npm test` | Vitest suite (in-memory Postgres via PGlite; PDF tests need local Chrome/Edge) |
 | `npm run config:check` | Validate config and test each account read-only (no secrets printed) |
 | `npm run db:migrate` | Apply `db/migrations/*.sql` (DATABASE_URL, else local `.data/pglite`) |
-| `npm run places:import` | Import the GeoNames gazetteer (required for live) |
+| `npm run places:import` | Import the GeoNames gazetteer (required for sandbox and live) |
 | `npm run storage:setup` | Create the private Supabase bucket |
-| `npm run verify:pdf` | Render a PDF per language, check fonts/text layer, save page images |
-| `npm run samples:build` | Rebuild `public/samples/rasi-astro-sample-report-en.pdf` |
+| `npm run verify:pdf` | Render personal + compatibility PDFs per language, check fonts/text/footer, save page images |
+| `npm run images:build` | Build homepage artwork derivatives + manifest from `assets-src/` |
+| `npm run fonts:copy` / `fonts:subset` | Copy font files from packages / subset display fonts to the glyphs used |
 | `npm run export:xlsx` | Owner Excel export to `exports/` |
-| `npm run ops:status` / `ops:reconcile` / `ops:retry-report` / `ops:resend-email` / `ops:delete-order` / `ops:purge` | Owner operations (see docs/OPERATIONS.md) |
+| `npm run ops:status` / `ops:reconcile` / `ops:retry-report` / `ops:resend-email` / `ops:delete-order` / `ops:purge` / `ops:privacy-export` | Owner operations (see docs/OPERATIONS.md) |
 
 Scripts that open the local demo database need the dev server stopped (PGlite is
-single-process; a lock file enforces this). With `DATABASE_URL` set they run any time.
+single-process). On Windows Git Bash, prefix commands that take `/paths` as arguments
+with `MSYS_NO_PATHCONV=1` (dev helpers in `scripts/lib/`).
 
 ## Architecture (modular monolith)
 
-One Next.js App Router application. Boundaries:
-
 ```
-src/config/        central, non-secret configuration (pricing, languages, site, hero media)
-src/domain/        pure business rules shared by server and browser (pricing, input schema,
-                   birth-time resolution, chart types, status types) - no I/O
-src/i18n/          report/email dictionaries for ta, en, hi, te, kn, ml
+src/config/        central, non-secret configuration (pricing, languages, compatibility
+                   categories, regional terms, site, artwork)
+src/content/       customer-facing marketing copy (claims must match docs/CLAIMS.md)
+src/domain/        pure business rules shared by server and browser - no I/O
+src/i18n/          report/email dictionaries for ta, en, hi, te, kn, ml (pair.ts: compatibility)
 src/server/        server-only code (never import from *.client.tsx - ESLint enforces this)
-  config/          env parsing (zod) + readiness (which providers, may we take money?)
+  config/          env parsing (zod) + readiness: providers, per-product checks, site state
   db/              Database interface; postgres.js (Supabase) and PGlite (demo/tests); migrator
   places/          gazetteer search, demo places, GeoNames parser
-  orders/          order creation (frozen inputs, price snapshot), birth resolution, status view
+  orders/          order creation (both products), birth resolution, status view
   payments/        provider interface, Cashfree adapter, demo adapter, state machine
-  astrology/       chart calculation (built-in engine on astronomy-engine, MIT)
-  interpretation/  AI boundary: schema, versioned prompt, validation, OpenAI + demo providers
-  reports/         report document, periods, discrepancies, HTML/SVG renderer, PDF, sample
+  astrology/       chart engine (astronomy-engine, MIT) + compatibility.ts (pair analysis)
+  interpretation/  AI boundary: schemas, versioned prompts, validation, OpenAI + demo providers
+  reports/         report documents, renderers (personal + pair), SVG charts, PDF
   jobs/            outbox, dispatch, pipeline steps, Inngest functions, local demo runner
-  delivery/        email providers (Resend / demo file), templates, delivery + recovery
-  access/          hashed expiring access tokens
-  storage/         private file storage (Supabase / local disk)
-  exports/         owner .xlsx export
-  ops/             health, alerts, retention
+  delivery/        email providers, templates, delivery + recovery
+  access/ storage/ exports/ ops/
 src/app/           pages and API route handlers (thin: validate, authorise, call services)
 src/components/    UI; files named *.client.tsx are client components
 db/migrations/     versioned SQL (append-only; applied migrations are checksummed)
-scripts/           owner CLI scripts (tsx); scripts/lib has dev helpers
+assets-src/        original artwork (derivatives in public/art/)
+scripts/           owner CLI scripts (tsx); scripts/lib has dev helpers (screenshots, journeys)
 tests/             Vitest
 ```
 
-Request -> service -> repository/provider. Providers sit behind interfaces
-(`PaymentProvider`, `CalculationProvider`, `InterpretationProvider`, `EmailProvider`,
-`StorageProvider`) so a vendor can be replaced without touching business logic.
-
-### Order lifecycle
-1. `POST /api/orders/preview` validates everything and resolves the birth moment.
-2. `POST /api/orders` creates the order: inputs frozen, server-computed price snapshot,
-   access token issued as an HttpOnly cookie. Changes later = a new order.
-3. `POST /api/orders/:id/checkout` creates (or reuses) a Cashfree order for the stored
-   amount; the browser opens Cashfree hosted checkout.
+### Order lifecycle (both products)
+1. Preview: `POST /api/orders/preview` or `/api/compatibility/orders/preview` validates and
+   resolves each person's birth moment (own place, own historical time zone).
+2. Create: `POST /api/orders` or `/api/compatibility/orders`: inputs frozen, server-computed
+   price snapshot, participants stored as `birth_details` rows 1 (and 2), access token
+   issued as an HttpOnly cookie. Changes later = a new order.
+3. `POST /api/orders/:id/checkout` creates (or reuses) a Cashfree order for the stored amount.
 4. Payment evidence (signed webhook, or authenticated status lookup on return / by the
-   sweeper) goes through `applyPaymentEvidence` - ONE transaction marks paid, creates
-   `report_jobs` + an `outbox` row. Then the outbox is dispatched (Inngest event or local runner).
-5. Pipeline steps (each idempotent, each skips stored work): calculate -> interpret_core ->
-   interpret_timeline -> interpret_synthesis -> assemble -> render_pdf -> finalize.
+   sweeper) goes through `applyPaymentEvidence`: ONE transaction marks paid, creates
+   `report_jobs` + an `outbox` row. Then the outbox is dispatched (Inngest or local runner).
+5. Pipeline steps, each idempotent and skipping stored work: calculate (one chart; or two
+   charts + `compatibility_analyses`) -> three AI parts (`core/timeline/synthesis` or
+   `pair_core/pair_dynamics/pair_synthesis`) -> assemble -> render_pdf -> finalize.
 6. finalize marks ready and enqueues delivery; delivery emails a fresh link
    (`/access#t=TOKEN` - token in the URL fragment, never sent to servers).
 
 ## Business invariants (do not break)
 
-- **Prices** live only in `src/config/pricing.ts`: report INR 49 (4900 paise); add-on of
-  THREE questions INR 20 in total (2000); totals 4900 / 6900. Integer paise everywhere.
-  The server computes the price; nothing price-related is read from requests. Orders
-  store a price snapshot + `pricing_version`. The PDF is always included.
-- One order = one tradition + one language. Questions are answered only when the
-  package is `report_with_questions` (validated on input AND enforced in the pipeline).
-- **Payment truth** comes only from verified server-side evidence. Never trust the
-  browser redirect. Amount, currency and provider order id must match the snapshot.
-  A paid order never moves backwards. Duplicates/mismatches -> `needs_review` + alert.
-- Payment confirmation and job creation are atomic (outbox pattern). Never add
-  fire-and-forget promises; never run generation inside the checkout request.
-- Every pipeline step must be idempotent and must not repeat paid AI calls. Retries
-  are bounded. Retrying never charges the customer again.
-- **Chart facts come only from the calculation layer.** The AI interprets; it never
-  produces positions. Unknown/approximate birth times produce `Fact` values with status
-  `uncertain`/`omitted` - never a silent noon or a guessed value.
-- Customer-supplied chart details are unverified context: shown, compared, never used
-  to override calculations.
-- Customer text (notes, questions) is untrusted data: it goes only in the JSON payload of
-  the prompt, never in instructions. No name, email, phone, birthplace or payment data
-  is sent to the AI.
-- Regional perspectives (Tamil, Kannada, North Indian) are presentation/interpretation
-  perspectives over ONE calculated chart. Never describe them as separate sciences.
-- No fake reviews, counts, endorsements, urgency or accuracy guarantees. Astrology is
-  described as interpretive, not scientifically validated.
+- **Prices** live only in `src/config/pricing.ts` (4900 / 2000 / 3900 paise; totals 4900,
+  6900, 3900). Integer paise everywhere. The server computes the price; nothing
+  price-related is read from requests. Orders store a price snapshot + `pricing_version`.
+- One order = one product + one tradition + one language. Questions only for
+  `report_with_questions` (validated on input AND enforced in the pipeline). A
+  compatibility order has exactly two participants (tuple schema; the DB allows only
+  participants 1 and 2; the pipeline refuses any other count).
+- **Payment truth** comes only from verified server-side evidence. Amount, currency and
+  provider order id must match the snapshot. A paid order never moves backwards.
+- Payment confirmation and job creation are atomic (outbox). No fire-and-forget promises;
+  never run generation inside a request. Every step idempotent; retries bounded and
+  within the 300 s step limit; retrying never charges again or repeats paid AI calls.
+- **Chart facts come only from the calculation layer.** Unknown/approximate birth times
+  produce `Fact` values with status `uncertain`/`omitted`, per person, never a guess.
+- **No compatibility scores or percentages**, no verdicts on marrying/separating/hiring,
+  no gender or role assumptions; Yoni/Nadi only for romantic categories.
+- Customer text is untrusted data: only in the prompt's JSON payload. No name, email,
+  phone, birthplace or payment data is sent to the AI; names inside notes are masked
+  (`maskNames`). The AI refers to people only as {{A}}/{{B}}.
+- Regional perspectives (Tamil, Kannada, Hindi/Janma Kundali; key `north_indian` kept
+  for stored reports) are presentation perspectives over ONE chart. Never describe them
+  as separate sciences, and never claim Telugu/Malayalam perspectives exist.
+- Marketing: every claim must be in docs/CLAIMS.md; never name the AI model/provider in
+  marketing; no human-review, astrologer-equivalence, fake counts, urgency or guarantees.
 - Access: an order reference or email NEVER grants access; only a 256-bit token (stored
-  hashed, expiring). Unauthorised = "not found". Recovery responses are identical
-  whether or not the email matched.
-- Demo adapters never run in live mode, and demo mode is refused on the production
-  deployment (`isProductionDeployment`). Missing live config disables checkout.
-- A language is sold only if `enabled` in `src/config/languages.ts` AND `npm run verify:pdf`
-  passes for it.
+  hashed, expiring). Unauthorised = "not found". Recovery responses identical.
+- **Modes**: demo (simulated), sandbox (real services, Cashfree test), live (real money).
+  Demo and sandbox are refused on rasiastro.com; a hosted site must set `APP_MODE`
+  explicitly. `getSiteState()` is the single source for the banner and order buttons;
+  each product has its own switch.
+- Age policy: purchaser and every subject 18+. Children's data is not supported.
+- A language is sold only if `enabled` in `src/config/languages.ts` AND `npm run verify:pdf` passes.
+- Policies state only what the system does (retention, timings come from env).
 
 ## Standards
 
 - Strict TypeScript (`noUncheckedIndexedAccess`), small cohesive modules, explicit interfaces.
-- Presentation, business rules, persistence and providers stay separate.
 - Server-side validation (zod) and authorisation for every sensitive operation.
-- SQL: parameters are strings/numbers/booleans/null with explicit casts (`$1::uuid`);
-  select `date`/`time` as text, counts as `::int` (keeps postgres.js and PGlite identical).
-- Migrations are append-only. Every new table: `enable row level security` (no policies)
-  so Supabase's public API roles can read nothing.
-- No secrets in code, logs, browser bundles or screenshots. No `NEXT_PUBLIC_` secrets
-  (there are no NEXT_PUBLIC variables at all). Use `log` from `src/server/log.ts`
-  (it redacts); never log tokens, emails, phones, birth data or report text.
+- SQL: parameters with explicit casts (`$1::uuid`); select `date`/`time` as text, counts
+  as `::int` (keeps postgres.js and PGlite identical).
+- Migrations are append-only and backward compatible. Every new table:
+  `enable row level security` (no policies) and revoke anon/authenticated.
+- No secrets in code, logs, browser bundles or screenshots; no `NEXT_PUBLIC_` variables.
+  Use `log` from `src/server/log.ts`; never log tokens, emails, phones, birth data or report text.
 - Report HTML is built with the auto-escaping `html` template in `src/server/reports/html.ts`.
+- UI: design tokens in `src/app/globals.css`; motion 150-250 ms for controls,
+  300-500 ms for content; respect reduced motion; content must be visible without JS
+  (reveals only hide under `html.js`). Indic text: no letter-spacing, generous line height.
 - Bump versions when behaviour changes: `PRICING_VERSION`, `CALCULATION_VERSION`,
-  `PROMPT_VERSION`, `REPORT_SCHEMA_VERSION`, `CONSENT_VERSION`.
-- Comments explain *why* and non-obvious constraints, not what the code says.
+  `PAIR_CALCULATION_VERSION`, `PROMPT_VERSION`, `PAIR_PROMPT_VERSION`,
+  `REPORT_SCHEMA_VERSION`, `PAIR_REPORT_SCHEMA_VERSION`, `CONSENT_VERSION`.
 - Never describe scaffolding, mocks or untested code as production-ready.
 - Before committing: `npm run check`. For PDF/font changes also `npm run verify:pdf`.

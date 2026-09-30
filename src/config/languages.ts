@@ -37,14 +37,14 @@ export const TRADITIONS = [
     title: "Indian (Vedic) astrology",
     shortTitle: "Indian",
     description:
-      "Sidereal zodiac (Lahiri ayanamsa), your Rasi, Nakshatram and Lagna, Vimshottari dasha periods, with Tamil, Kannada and North Indian presentation perspectives.",
+      "Your Jathagam (Janma Kundali): the sidereal chart (Lahiri ayanamsa) with your Rasi, Nakshatra and Lagna, Vimshottari dasha periods, and Tamil, Kannada and Hindi regional perspectives.",
   },
   {
     code: "western",
     title: "Western astrology",
     shortTitle: "Western",
     description:
-      "The tropical zodiac used in European and American astrology: Sun, Moon and Rising signs, houses and planetary aspects, read from modern and traditional perspectives.",
+      "Your natal chart in the tropical zodiac: Sun, Moon and Rising signs, planetary aspects and houses, read from modern psychological and traditional perspectives.",
   },
 ] as const;
 

@@ -39,6 +39,14 @@ try {
       page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
       page.on("pageerror", (e) => errors.push(String(e)));
       await page.goto(`${base}${p}`, { waitUntil: "networkidle0", timeout: 120_000 });
+      const stemBase = `${p.replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "") || "home"}-${width}`;
+      if (noJs) {
+        // Page scripts are off, so nothing can be evaluated: one full-page capture.
+        await page.screenshot({ path: path.join(outDir, `${stemBase}-nojs.png`), fullPage: true });
+        console.log(`${stemBase}-nojs: captured (JavaScript disabled) errors=${errors.length ? errors.join(" | ") : "none"}`);
+        await page.close();
+        continue;
+      }
       // Trigger scroll reveals, then return to the top.
       await page.evaluate(async () => {
         for (let y = 0; y < document.documentElement.scrollHeight; y += 400) {

@@ -9,7 +9,7 @@ import OpenAI from "openai";
 import { Resend } from "resend";
 import { fail } from "./lib/cli";
 import { getEnv } from "../src/server/config/env";
-import { chooseProviders, getCheckoutAvailability, getConfigChecks } from "../src/server/config/readiness";
+import { chooseProviders, getCheckoutAvailability, getConfigChecks, getProductChecks, getSiteState } from "../src/server/config/readiness";
 import { closeDb, getDb } from "../src/server/db";
 import { getSchemaVersion } from "../src/server/db/migrate";
 import { getPlacesAvailability } from "../src/server/places/service";
@@ -25,8 +25,10 @@ try {
   console.log(`\nMode: ${env.APP_MODE.toUpperCase()}  ·  site: ${env.PUBLIC_SITE_URL}`);
   console.log(`Providers: payments=${providers.payments}, AI=${providers.interpretation}, email=${providers.email}, storage=${providers.storage}, jobs=${providers.jobs}\n`);
 
+  console.log(`Site state: ${getSiteState(env).kind}
+`);
   console.log("Configuration:");
-  for (const c of getConfigChecks(env)) (c.ok ? ok : bad)(`${c.label}${c.ok ? "" : ` - ${c.detail}`}`);
+  for (const c of [...getConfigChecks(env), ...getProductChecks("personal", env), ...getProductChecks("compatibility", env)]) (c.ok ? ok : bad)(`${c.label}${c.ok ? "" : ` - ${c.detail}`}`);
 
   console.log("\nDatabase:");
   try {
@@ -60,6 +62,10 @@ try {
       if (!env.OPENAI_MODEL) bad("OPENAI_MODEL is not set. Pick one of the models your account lists, e.g.: " + ids.filter((m) => /^gpt|^o\d/.test(m)).slice(0, 8).join(", "));
       else if (ids.includes(env.OPENAI_MODEL)) ok(`model "${env.OPENAI_MODEL}" is available to this account`);
       else bad(`model "${env.OPENAI_MODEL}" is NOT available to this account. Available: ${ids.filter((m) => /^gpt|^o\d/.test(m)).slice(0, 10).join(", ")}`);
+      if (env.OPENAI_MODEL_COMPATIBILITY) {
+        if (ids.includes(env.OPENAI_MODEL_COMPATIBILITY)) ok(`compatibility model "${env.OPENAI_MODEL_COMPATIBILITY}" is available to this account`);
+        else bad(`compatibility model "${env.OPENAI_MODEL_COMPATIBILITY}" is NOT available to this account`);
+      }
     } catch (error) {
       bad(`OpenAI check failed: ${(error as Error).message}`);
     }
@@ -98,9 +104,11 @@ try {
     (browser ? ok : bad)(browser ? `local browser: ${browser}` : "no Chrome/Edge found - install Google Chrome or set CHROME_EXECUTABLE_PATH");
   } else info(`${source} Chromium (verify after deploying with the health check)`);
 
-  const availability = getCheckoutAvailability(env);
-  console.log(`\nCheckout: ${availability.available ? "AVAILABLE" : "DISABLED"}`);
-  if (!availability.available) for (const m of availability.missing) console.log(`  - ${m}`);
+  for (const product of ["personal", "compatibility"] as const) {
+    const availability = getCheckoutAvailability(env, product);
+    console.log(`\nCheckout (${product}): ${availability.available ? "AVAILABLE" : "DISABLED"}`);
+    if (!availability.available) for (const m of availability.missing) console.log(`  - ${m}`);
+  }
   console.log("");
 } catch (error) {
   fail((error as Error).message);

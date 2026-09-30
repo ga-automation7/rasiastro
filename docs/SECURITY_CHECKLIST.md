@@ -42,14 +42,19 @@ Tick these before taking real payments, and review them every few months.
   payment refresh, link exchange and recovery.
 - Security headers: CSP, HSTS (production), X-Frame-Options DENY, nosniff, Permissions-Policy.
 - Report HTML escapes all AI and customer text; PDF rendering blocks all network access.
-- The AI receives no name, email, phone, birthplace or payment data; customer text is
-  passed as data with explicit instructions not to follow it.
+- The AI receives no name, email, phone, birthplace or payment data (names typed inside
+  notes are masked too); customer text is passed as data with explicit instructions not
+  to follow it.
 - Logs are structured JSON with automatic redaction of emails, phone numbers, tokens and
   personal fields.
 - Excel exports neutralise formula injection and are created only by an owner-run
   command - there is no admin web page.
-- Demo mode is refused on the production domain; live mode refuses demo adapters and
-  disables checkout if any required service is missing.
+- Demo and sandbox modes are refused on the production domain; a hosted deployment without
+  an explicit `APP_MODE` takes no orders; live mode refuses demo adapters and closes
+  ordering if any required service is missing. Each product has its own on/off switch.
+- Compatibility orders record the purchaser's confirmation that they have the other
+  person's permission; privacy requests are handled with `npm run ops:privacy-export`
+  and `npm run ops:delete-order` after verifying the requester's email.
 
 ## Incident basics
 
@@ -57,6 +62,6 @@ Tick these before taking real payments, and review them every few months.
   Vercel env vars, redeploy. For `APP_SECRET` just replace it (only affects rate-limit keys).
 - **Suspected link leak for one order:** a developer can revoke tokens
   (`revokeOrderTokens`), then send the customer a fresh link (`ops:resend-email`).
-- **Site misbehaving during a payment problem:** remove `CASHFREE_CLIENT_SECRET` from
-  Vercel production and redeploy - checkout closes safely with a polite message while
-  existing reports keep working.
+- **Site misbehaving during a payment problem:** set `PERSONAL_ORDERS_ENABLED=false` and/or
+  `COMPATIBILITY_ORDERS_ENABLED=false` in Vercel and redeploy - ordering pauses with a
+  polite message while existing reports keep working.

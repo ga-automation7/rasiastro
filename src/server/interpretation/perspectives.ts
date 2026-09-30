@@ -28,7 +28,8 @@ const INDIAN: Perspective[] = [
   },
   {
     key: "north_indian",
-    name: "North Indian (Hindi-context) presentation perspective",
+    // Key kept for stored reports; customers see "Hindi (Janma Kundali)".
+    name: "Hindi (Janma Kundali) presentation perspective",
     focus:
       "Hindi naming; the North Indian diamond chart centred on the Lagna, reading life areas by house (bhava) from the Lagna; the purnimanta lunar calendar (month ending on the full moon); emphasis on the Lagna lord and house placements.",
   },

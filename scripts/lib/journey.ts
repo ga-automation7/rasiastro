@@ -1,19 +1,22 @@
 /**
- * Development helper: drives the complete DEMO customer journey in a real browser
+ * Development helper: drives a complete DEMO customer journey in a real browser
  * (local Chrome/Edge) against the running dev server, saving a screenshot per step.
  *
  * Usage (dev server running in demo mode):
- *   npx tsx scripts/lib/journey.ts [indian|western] [exact|approximate|unknown] [placeQuery] [ta|en|hi|te|kn|ml]
+ *   npx tsx scripts/lib/journey.ts personal [indian|western] [exact|approximate|unknown] [placeQuery] [ta|en|hi|te|kn|ml]
+ *   npx tsx scripts/lib/journey.ts compatibility [indian|western] [category] [ta|en|hi|te|kn|ml]
+ * (On Windows Git Bash, prefix with MSYS_NO_PATHCONV=1.)
  */
 import fs from "node:fs";
 import path from "node:path";
 import puppeteer, { type Page } from "puppeteer-core";
 import { findLocalBrowser } from "../../src/server/reports/pdf";
 
-const [tradition = "indian", certainty = "exact", placeQuery = "Madurai", language = "ta"] = process.argv.slice(2);
+const [product = "personal", ...rest] = process.argv.slice(2);
 const base = process.env.SCREENSHOT_BASE_URL ?? "http://localhost:3000";
 const width = Number(process.env.JOURNEY_WIDTH ?? 390);
-const outDir = path.join(process.cwd(), ".data", "journey");
+const outDir = path.join(process.cwd(), ".data", "journey", product);
+fs.rmSync(outDir, { recursive: true, force: true });
 fs.mkdirSync(outDir, { recursive: true });
 let shot = 0;
 const errors: string[] = [];
@@ -42,63 +45,31 @@ async function typeByLabel(page: Page, label: string, value: string) {
   await page.type(`[id="${id}"]`, value);
 }
 
-const browser = await puppeteer.launch({ executablePath: findLocalBrowser()!, headless: true });
-try {
-  const page = await browser.newPage();
-  await page.setViewport({ width, height: 900, isMobile: width < 768, hasTouch: width < 768 });
-  page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
-  page.on("pageerror", (e) => errors.push(String(e)));
-  page.on("dialog", (d) => void d.accept());
-
-  await page.goto(`${base}/start`, { waitUntil: "networkidle0" });
-  await page.click(`input[name=tradition][value=${tradition}]`);
-  await page.click(`input[name=language][value=${language}]`);
-  await snap(page, "step1");
-  await clickText(page, "Continue");
-
-  await page.waitForSelector("h1::-p-text(Birth details)");
-  await typeByLabel(page, "Full name of the person", "Demo Tester");
-  await selectByLabel(page, "Day", "15");
-  await selectByLabel(page, "Month", "8");
-  await selectByLabel(page, "Year", "1990");
-  await page.click(`input[name=timeCertainty][value=${certainty}]`);
-  if (certainty !== "unknown") {
+async function fillBirth(page: Page, opts: { nameLabel: string; name: string; day: string; month: string; year: string; certaintyName: string; certainty: string; place: string }) {
+  await typeByLabel(page, opts.nameLabel, opts.name);
+  await selectByLabel(page, "Day", opts.day);
+  await selectByLabel(page, "Month", opts.month);
+  await selectByLabel(page, "Year", opts.year);
+  await page.click(`input[name="${opts.certaintyName}"][value=${opts.certainty}]`);
+  if (opts.certainty !== "unknown") {
     await selectByLabel(page, "Hour", "6");
     await selectByLabel(page, "Minute", "30");
     await selectByLabel(page, "AM / PM", "AM");
-    if (certainty === "approximate") await selectByLabel(page, "How far off could it be?", "60");
+    if (opts.certainty === "approximate") await selectByLabel(page, "How far off could it be?", "60");
   }
-  await typeByLabel(page, "Birthplace (city or town)", placeQuery);
+  await typeByLabel(page, "Birthplace (city or town)", opts.place);
   await page.waitForSelector("button.card", { timeout: 15_000 });
-  await snap(page, "step2-place-results");
   await page.locator("button.card").click();
-  await snap(page, "step2");
-  await clickText(page, "Continue");
+}
 
-  await page.waitForSelector("h1::-p-text(Context & questions)");
-  await clickText(page, "Add three personal questions");
-  const questions = await page.$$("textarea[placeholder]");
-  const texts = ["What themes may shape my career in the next two years?", "How can I bring more patience to my relationships?", "What should I focus on for personal growth this year?"];
-  for (let i = 0; i < 3; i += 1) await questions[i]!.type(texts[i]!);
-  await snap(page, "step3");
-  await clickText(page, "Continue");
-
-  await page.waitForSelector("h1::-p-text(Review & pay)");
-  await page.waitForSelector("dt::-p-text(Total to pay)", { timeout: 20_000 });
-  await typeByLabel(page, "Email for your report", "demo.tester@example.com");
-  await typeByLabel(page, "Mobile number", "9876543210");
-  await page.click('input[type="checkbox"]');
-  await snap(page, "step4-review");
-  await page.locator("button[type=submit]").click();
-
+async function payAndOpen(page: Page) {
   await page.waitForSelector("::-p-text(DEMO CHECKOUT)", { timeout: 30_000 });
   await snap(page, "demo-checkout");
   await clickText(page, "Simulate successful payment");
-
-  await page.waitForSelector("::-p-text(Your report is ready.)", { timeout: 120_000 });
+  await page.waitForSelector("::-p-text(Your report is ready.)", { timeout: 180_000 });
   await snap(page, "status-ready");
   const orderUrl = page.url();
-  await clickText(page, "Read your report");
+  await clickText(page, "Read my report");
   await page.waitForSelector(".report", { timeout: 30_000 });
   await snap(page, "report");
   const pdf = await page.evaluate(async (u) => {
@@ -108,6 +79,81 @@ try {
   }, orderUrl);
   console.log("order page:", orderUrl);
   console.log("pdf:", JSON.stringify(pdf));
+  return orderUrl;
+}
+
+const browser = await puppeteer.launch({ executablePath: findLocalBrowser()!, headless: true });
+try {
+  const page = await browser.newPage();
+  await page.setViewport({ width, height: 900, isMobile: width < 768, hasTouch: width < 768 });
+  page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+  page.on("pageerror", (e) => errors.push(String(e)));
+  page.on("dialog", (d) => void d.accept());
+  let orderUrl: string;
+
+  if (product === "compatibility") {
+    const [tradition = "indian", category = "friendship", language = "en"] = rest;
+    await page.goto(`${base}/compatibility?category=${category}`, { waitUntil: "networkidle0" });
+    await page.click(`input[name=tradition][value=${tradition}]`);
+    await page.click(`input[name=language][value=${language}]`);
+    await snap(page, "step1");
+    await clickText(page, "Continue");
+
+    await page.waitForSelector("h1::-p-text(Person A)");
+    await fillBirth(page, { nameLabel: "Person A's full name", name: "Kavya Raman", day: "10", month: "3", year: "1991", certaintyName: "participants.0.birth.timeCertainty", certainty: "exact", place: "Chennai" });
+    await typeByLabel(page, "Additional information about this person", "Likes to plan ahead and talk things through.");
+    await snap(page, "step2");
+    await clickText(page, "Continue");
+
+    await page.waitForSelector("h1::-p-text(Person B)");
+    await fillBirth(page, { nameLabel: "Person B's full name", name: "Sam Okafor", day: "2", month: "11", year: "1989", certaintyName: "participants.1.birth.timeCertainty", certainty: "unknown", place: "New York" });
+    await snap(page, "step3");
+    await clickText(page, "Continue");
+
+    await page.waitForSelector("h1::-p-text(About your connection)");
+    await typeByLabel(page, "How do you know each other?", "University friends");
+    await page.locator("button::-p-text(+ )").click();
+    await snap(page, "step4");
+    await clickText(page, "Continue");
+
+    await page.waitForSelector("h1::-p-text(Review your details)");
+    await page.waitForSelector("dt::-p-text(Total to pay)", { timeout: 30_000 });
+    await typeByLabel(page, "Email for your report", "demo.tester@example.com");
+    await typeByLabel(page, "Mobile number", "9876543210");
+    for (const box of await page.$$('input[type="checkbox"]')) await box.click();
+    await snap(page, "step5-review");
+    await page.locator("button[type=submit]").click();
+    orderUrl = await payAndOpen(page);
+  } else {
+    const [tradition = "indian", certainty = "exact", placeQuery = "Madurai", language = "ta"] = rest;
+    await page.goto(`${base}/start`, { waitUntil: "networkidle0" });
+    await page.click(`input[name=tradition][value=${tradition}]`);
+    await page.click(`input[name=language][value=${language}]`);
+    await snap(page, "step1");
+    await clickText(page, "Continue");
+
+    await page.waitForSelector("h1::-p-text(Your birth details)");
+    await fillBirth(page, { nameLabel: "Full name of the person", name: "Demo Tester", day: "15", month: "8", year: "1990", certaintyName: "birth.timeCertainty", certainty, place: placeQuery });
+    await snap(page, "step2");
+    await clickText(page, "Continue");
+
+    await page.waitForSelector("h1::-p-text(Notes and questions)");
+    await clickText(page, "Make it more personal.");
+    const questions = await page.$$("textarea[placeholder^='For example']");
+    const texts = ["What themes may shape my career in the next two years?", "How can I bring more patience to my relationships?", "What should I focus on for personal growth this year?"];
+    for (let i = 0; i < 3; i += 1) await questions[i]!.type(texts[i]!);
+    await snap(page, "step3");
+    await clickText(page, "Continue");
+
+    await page.waitForSelector("h1::-p-text(Review your details)");
+    await page.waitForSelector("dt::-p-text(Total to pay)", { timeout: 20_000 });
+    await typeByLabel(page, "Email for your report", "demo.tester@example.com");
+    await typeByLabel(page, "Mobile number", "9876543210");
+    for (const box of await page.$$('input[type="checkbox"]')) await box.click();
+    await snap(page, "step4-review");
+    await page.locator("button[type=submit]").click();
+    orderUrl = await payAndOpen(page);
+  }
 
   // A second, fresh browser context must NOT be able to open the order.
   const other = await browser.createBrowserContext();

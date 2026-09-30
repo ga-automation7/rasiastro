@@ -228,7 +228,8 @@ function perspectivesSection(ctx: Ctx): RawHtml {
     const titles: Record<string, Record<string, string>> = {
       tamil: { en: "Tamil perspective", ta: "தமிழ் பார்வை", hi: "तमिल दृष्टिकोण", te: "తమిళ దృక్కోణం", kn: "ತಮಿಳು ದೃಷ್ಟಿಕೋನ", ml: "തമിഴ് വീക്ഷണം" },
       kannada: { en: "Kannada perspective", ta: "கன்னட பார்வை", hi: "कन्नड़ दृष्टिकोण", te: "కన్నడ దృక్కోణం", kn: "ಕನ್ನಡ ದೃಷ್ಟಿಕೋನ", ml: "കന്നഡ വീക്ഷണം" },
-      north_indian: { en: "North Indian (Hindi-context) perspective", ta: "வட இந்திய (இந்தி சூழல்) பார்வை", hi: "उत्तर भारतीय (हिंदी संदर्भ) दृष्टिकोण", te: "ఉత్తర భారత (హిందీ సందర్భం) దృక్కోణం", kn: "ಉತ್ತರ ಭಾರತದ (ಹಿಂದಿ ಸಂದರ್ಭ) ದೃಷ್ಟಿಕೋನ", ml: "ഉത്തരേന്ത്യൻ (ഹിന്ദി പശ്ചാത്തലം) വീക്ഷണം" },
+      // Key kept for stored reports; the customer-facing name is the precise one.
+      north_indian: { en: "Hindi (Janma Kundali) perspective", ta: "இந்தி (ஜன்ம குண்டலி) பார்வை", hi: "हिंदी (जन्म कुंडली) दृष्टिकोण", te: "హిందీ (జన్మ కుండలి) దృక్కోణం", kn: "ಹಿಂದಿ (ಜನ್ಮ ಕುಂಡಲಿ) ದೃಷ್ಟಿಕೋನ", ml: "ഹിന്ദി (ജന്മ കുണ്ഡലി) വീക്ഷണം" },
       modern_psychological: { en: "Modern psychological perspective", ta: "நவீன உளவியல் பார்வை", hi: "आधुनिक मनोवैज्ञानिक दृष्टिकोण", te: "ఆధునిక మనోవైజ్ఞానిక దృక్కోణం", kn: "ಆಧುನಿಕ ಮನೋವೈಜ್ಞಾನಿಕ ದೃಷ್ಟಿಕೋನ", ml: "ആധുനിക മനശ്ശാസ്ത്ര വീക്ഷണം" },
       traditional: { en: "Traditional perspective", ta: "பாரம்பரியப் பார்வை", hi: "पारंपरिक दृष्टिकोण", te: "సంప్రదాయ దృక్కోణం", kn: "ಸಾಂಪ್ರದಾಯಿಕ ದೃಷ್ಟಿಕೋನ", ml: "പരമ്പരാഗത വീക്ഷണം" },
     };
@@ -315,7 +316,7 @@ export function renderReportBody(doc: ReportDocument): RawHtml {
   return html`<article class="report" lang="${getLanguage(doc.language).htmlLang}">
     ${banner ? html`<p class="report-banner" role="note">${banner}</p>` : ""}
     <header class="report-cover">
-      <p class="brand">Rasi Astro · <span>Your stars, your story.</span></p>
+      <p class="brand">Rasi Astro</p>
       <h1>${title}</h1>
       <p class="cover-name">${doc.subject.name}</p>
       <p class="cover-meta">${dict.labels.orderReference}: ${doc.orderReference} · ${dict.labels.generatedOn}: ${formatDate(doc.preparedOn, dict)}</p>

@@ -1,37 +1,83 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { LegalPage, businessDetails } from "@/components/legal/LegalPage";
 
-export const metadata: Metadata = { title: "Refund and cancellation policy" };
+export const metadata: Metadata = { title: "Refund & Cancellation" };
 export const dynamic = "force-dynamic";
 
 export default function RefundPolicyPage() {
   const b = businessDetails();
   return (
-    <LegalPage title="Refund and cancellation policy">
-      <p>Each report is prepared individually for the birth details you give us. This policy explains when we refund and how.</p>
-      <h2>Full refund</h2>
+    <LegalPage title="Refund & Cancellation Policy" summary="When you can cancel, when we refund, and how to ask.">
+      <p>
+        <strong>
+          Rasi Astro reports are personalized digital products. Once report generation has begun, we do not ordinarily offer cancellation or refunds for a change of mind, disagreement with an
+          astrological interpretation, or incorrect information entered and confirmed by the customer. This does not limit any rights or remedies available under applicable Indian law.
+        </strong>
+      </p>
+
+      <h2>Before you pay, and before generation starts</h2>
       <ul>
-        <li>If we cannot deliver your report within 48 hours of a successful payment.</li>
-        <li>If you were charged twice for the same order.</li>
-        <li>If your payment went through but no order was created on our side.</li>
+        <li>An unpaid order costs nothing; you can simply leave it. Unpaid orders are deleted after {b.unpaidDays} days.</li>
+        <li>
+          After payment, generation normally starts within minutes. Our records show exactly when it starts. If you ask us to cancel before it has started, we cancel the order and refund you in full.
+        </li>
       </ul>
-      <h2>Correction or refund</h2>
+
+      <h2>When we refund</h2>
+      <p>You are entitled to a full refund of the affected order in these situations:</p>
+      <ul>
+        <li>
+          <strong>Duplicate charge:</strong> you were charged more than once for the same order. We refund every extra payment.
+        </li>
+        <li>
+          <strong>Not delivered:</strong> you paid, but your report was not delivered within {b.maxHours} hours and we have not been able to deliver it after you contacted us.
+        </li>
+        <li>
+          <strong>Defective or incomplete:</strong> the report has a material technical defect, or content you paid for is missing (for example, the answers to your three purchased questions), and
+          we cannot correct it promptly.
+        </li>
+        <li>
+          <strong>Materially different:</strong> the report is materially different from the service described on this website (for example, the wrong product, tradition or language).
+        </li>
+        <li>
+          <strong>Required by law:</strong> any other case where Indian law gives you a refund or another remedy.
+        </li>
+      </ul>
       <p>
-        If your report has an error on our side - for example the wrong language, missing sections, or a calculation problem - tell us within 14 days. We will correct and re-issue it at no cost, or refund you if we cannot.
+        In these cases we may offer to correct or regenerate the report, and you can choose that instead. If you are entitled to a refund, we will not insist on store credit or regeneration.
       </p>
-      <h2>Not refundable</h2>
-      <p>
-        Because reports are personalised and delivered digitally, we cannot refund a correctly delivered report because you disagree with its interpretation, or because the birth details you entered were incorrect. For corrected details, please place a new order.
-      </p>
-      <h2>Cancellation</h2>
-      <p>
-        Before payment there is nothing to cancel. After payment, report preparation starts automatically within minutes; if you write to us before your report is ready, we will cancel it and refund you in full.
-      </p>
-      <h2>How refunds are paid</h2>
-      <p>Approved refunds are made through Cashfree Payments to the original payment method, usually within 5-7 working days (bank timelines may vary).</p>
+
+      <h2>When we do not ordinarily refund</h2>
+      <ul>
+        <li>A change of mind after generation has begun.</li>
+        <li>Disagreement with the astrological interpretation.</li>
+        <li>
+          Wrong birth details that you entered and confirmed on the review screen. We can help you place a new order with the correct details; the calculation for the original order was done as you
+          asked.
+        </li>
+      </ul>
+
       <h2>How to ask</h2>
       <p>
-        Email <a href={`mailto:${b.supportEmail}`}>{b.supportEmail}</a> from the address used for the order, with your order reference (RA-...). We never charge you again because a report needs to be regenerated.
+        Email <a href={`mailto:${b.supportEmail}`}>{b.supportEmail}</a> from the email address used for the order, with your order reference (for example RA-7K3M9Q2X) and a short description of the
+        problem. Screenshots help but are not required.
+      </p>
+
+      <h2>How long it takes</h2>
+      <ul>
+        <li>We acknowledge your request within 48 hours and tell you our decision as soon as we have reviewed it.</li>
+        <li>Once a refund is approved, we initiate it within {b.refundDays} working days, to the original payment method.</li>
+        <li>
+          After we initiate it, Cashfree Payments and your bank or card issuer credit the amount. How long that takes depends on your payment method and bank and is outside our control; if it has not
+          arrived after a reasonable time, contact us with the reference we send you and we will follow it up.
+        </li>
+      </ul>
+
+      <h2>Complaints</h2>
+      <p>
+        If you are not satisfied with our answer, see <Link href="/contact">Contact &amp; Grievance Redressal</Link>. You can also approach the National Consumer Helpline or a consumer commission;
+        this policy does not affect those rights.
       </p>
     </LegalPage>
   );

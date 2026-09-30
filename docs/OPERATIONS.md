@@ -9,7 +9,7 @@ All commands run from the project folder on your computer, using the settings in
 ```bash
 npm run ops:status
 ```
-Shows whether checkout is available and lists orders that need attention:
+Shows the site state (demo, sandbox, live or closed), whether each product is open, and lists orders that need attention:
 
 | What you see | What it means | What to do |
 | --- | --- | --- |
@@ -26,9 +26,12 @@ If `OWNER_ALERT_EMAIL` is set you also receive an email for each of these.
 npm run export:xlsx
 npm run export:xlsx -- --from 2026-10-01 --to 2026-10-31
 ```
-Creates `exports/rasi-astro-export-<date>.xlsx` with sheets *Orders*, *Birth details*,
-*Questions*, *Report status* and *Payments*, linked by **Order ID**. Times are Indian
-Standard Time. Report text is not included (it stays in private storage).
+Creates `exports/rasi-astro-export-<date>.xlsx` with sheets *Orders* (with product and
+connection category), *Participants* (one row per person; compatibility orders have
+persons 1 and 2), *Questions*, *Shared context*, *Report status* (including when
+generation started), *Payments* and *By product* (orders, AI tokens, estimated cost and
+average minutes to ready, per product), linked by **Order ID**. Times are Indian Standard
+Time. Report text is not included (it stays in private storage).
 
 The file contains personal data: keep it on an encrypted device, don't email it, delete
 it when done. The export is owner-only: there is no web page for it on purpose.
@@ -57,8 +60,42 @@ If a report cannot be completed, refund the customer from the Cashfree dashboard
 
 ## Refunds
 
-Refunds are done in the Cashfree dashboard. The app does not issue refunds itself.
-Note the refund in your records (the Excel export shows the payment reference).
+Follow the Refund & Cancellation Policy on the site. Refunds are done in the Cashfree
+dashboard (*Transactions → the payment → Refund*); the app does not issue refunds itself.
+Initiate approved refunds within `REFUND_INITIATION_WORKING_DAYS` working days and note
+them in your records (the Excel export shows the payment reference).
+
+**Cancellation before generation starts:** the policy promises a full refund if the
+customer asked before generation began. Check the *Generation started (IST)* column of
+the *Report status* sheet (or `npm run ops:status`) against the time of their message.
+
+## Pausing orders
+
+To stop new orders for one product without touching anything else, set
+`PERSONAL_ORDERS_ENABLED=false` or `COMPATIBILITY_ORDERS_ENABLED=false` in Vercel and
+redeploy. The order form for that product is replaced by a short notice; existing orders,
+reports, PDFs and email links keep working.
+
+## Complaints and privacy requests
+
+The policies promise: **acknowledge within 48 hours, resolve within one month.** Check the
+support and grievance mailbox at least once a day.
+
+1. Reply to acknowledge, quoting their order reference if given.
+2. Confirm the request comes from the email address used for the order (or ask them to
+   write from it). Never act on an order reference alone.
+3. Handle it:
+   - Access request ("what do you hold about me?"):
+     `npm run ops:privacy-export -- their@email.com` writes a JSON file to
+     `exports/privacy/`. Send it privately, then delete the file.
+   - Deletion: `npm run ops:delete-order -- RA-XXXXXXXX --yes` (see below).
+   - Correction of an email address: a developer can update `orders.report_email`.
+     Birth details in a report already written stay as ordered; offer a new order.
+   - Complaint about a report: see Refund & Cancellation Policy and the sections above.
+   - Request from the *other* person in a compatibility report: treat it like any
+     customer request; they may ask for access or deletion of their details.
+4. Reply with the outcome and reasons. Keep a simple log (date received, acknowledged,
+   resolved, what was done) in a private spreadsheet.
 
 ## Customer asks to delete their data
 
@@ -105,9 +142,9 @@ verified, report ready, delivery failed, generation failed. It contains no birth
 report content. A developer can chart it; an SQL example for the Supabase SQL editor:
 
 ```sql
-select event, count(*) from funnel_events
+select product, event, count(*) from funnel_events
 where created_at > now() - interval '30 days' and mode = 'live'
-group by event order by event;
+group by product, event order by product, event;
 ```
 
 ## Changing prices

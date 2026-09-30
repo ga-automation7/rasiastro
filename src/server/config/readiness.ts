@@ -67,6 +67,8 @@ export function getConfigChecks(env: Env = getEnv()): ConfigCheck[] {
         env.STORAGE_PROVIDER === "supabase" && Boolean(env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY),
         "A demo on a hosted server needs STORAGE_PROVIDER=supabase.",
       );
+      // The in-process runner only works on your own computer; hosted jobs must be durable.
+      add("demo_jobs", "Background jobs for the hosted demo", providers.jobs === "inngest", "A demo on a hosted server needs JOB_RUNNER=inngest.");
     }
   } else {
     if (env.APP_MODE === "sandbox") {
