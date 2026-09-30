@@ -211,9 +211,9 @@ export function OrderWizard({
   const birthReady = step === 2 && Object.keys(personalBirthErrors(state)).length === 0;
 
   return (
-    <div className="relative isolate overflow-hidden">
+    <div className="relative isolate">
       {/* Depth without distraction: warm light, faint orbits, a soft vignette. */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_45%_at_50%_0%,rgb(247_236_210/0.9),transparent_70%),radial-gradient(ellipse_120%_90%_at_50%_40%,transparent_55%,rgb(122_86_26/0.07))]" />
         <svg viewBox="0 0 800 800" className="absolute -right-64 top-24 h-[46rem] w-[46rem] opacity-[0.22]" fill="none" stroke="var(--color-gold-500)">
           <circle cx="400" cy="400" r="390" strokeWidth="0.8" />
