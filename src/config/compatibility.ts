@@ -89,10 +89,10 @@ export const COMPATIBILITY_CATEGORIES: readonly CategoryCopy[] = [
   {
     key: "business_partnership",
     label: "Business partnership",
-    description: "Roles, shared direction, and decision-making.",
+    description: "Roles, shared direction, and how decisions are made.",
     romantic: false,
     examples: {
-      howKnown: "e.g. We are co-founders of a small business",
+      howKnown: "e.g. We started a small business together",
       knownDuration: "e.g. Partners for three years",
       hopes: "e.g. How we split roles and make decisions",
       sharedCircumstances: "e.g. We are deciding whether to expand",
@@ -162,7 +162,7 @@ export const CATEGORY_ANALYSIS: Record<
   business_partnership: {
     indianFactors: ["graha_maitri", "moon_sign_relationship", "tara", "gana"],
     westernFocus: ["jupiter", "saturn", "mercury", "mars", "sun"],
-    themes: ["roles and shared direction", "decision-making and risk", "trust and accountability"],
+    themes: ["roles and shared direction", "making decisions and handling risk", "trust and accountability"],
   },
   family: {
     indianFactors: ["moon_sign_relationship", "graha_maitri", "gana", "tara"],

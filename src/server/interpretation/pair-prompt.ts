@@ -7,7 +7,7 @@ import { languageRulesFor } from "./prompt-v1";
  * Compatibility prompt, version 1. Any wording change that could alter report content
  * must bump PAIR_PROMPT_VERSION; the version is stored with every generated part.
  */
-export const PAIR_PROMPT_VERSION = "pair-prompt-v1.0";
+export const PAIR_PROMPT_VERSION = "pair-prompt-v1.1";
 
 const PAIR_RULES = `You write one part of a two-person compatibility report for Rasi Astro.
 
