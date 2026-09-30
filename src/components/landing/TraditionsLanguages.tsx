@@ -8,7 +8,7 @@ export function TraditionsLanguages() {
   const t = HOME.traditions;
   const languages = REPORT_LANGUAGES.filter((l) => l.enabled);
   return (
-    <section id="traditions" aria-labelledby="traditions-heading" className="section scroll-mt-16">
+    <section id="traditions" aria-labelledby="traditions-heading" className="section">
       <div className="container-page">
         <SectionIntro id="traditions-heading" eyebrow={t.eyebrow} lines={t.headline} supporting={t.supporting} />
 

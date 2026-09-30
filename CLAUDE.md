@@ -33,6 +33,7 @@ system simple, honest and well documented.
 | `npm run verify:pdf` | Render personal + compatibility PDFs per language, check fonts/text/footer, save page images |
 | `npm run images:build` | Build homepage artwork derivatives + manifest from `assets-src/` |
 | `npm run fonts:copy` / `fonts:subset` | Copy font files from packages / subset display fonts to the glyphs used |
+| `npx tsx scripts/lib/og-image.ts` | Re-render the social preview image `public/art/og-card.jpg` (local Chrome/Edge) |
 | `npm run export:xlsx` | Owner Excel export to `exports/` |
 | `npm run ops:status` / `ops:reconcile` / `ops:retry-report` / `ops:resend-email` / `ops:delete-order` / `ops:purge` / `ops:privacy-export` | Owner operations (see docs/OPERATIONS.md) |
 
@@ -45,7 +46,8 @@ with `MSYS_NO_PATHCONV=1` (dev helpers in `scripts/lib/`).
 ```
 src/config/        central, non-secret configuration (pricing, languages, compatibility
                    categories, regional terms, site, artwork)
-src/content/       customer-facing marketing copy (claims must match docs/CLAIMS.md)
+src/content/       customer-facing copy: site-copy.ts (homepage), faq.ts (FAQ + FAQPage
+                   JSON-LD), landing.ts (product pages); claims must match docs/CLAIMS.md
 src/domain/        pure business rules shared by server and browser - no I/O
 src/i18n/          report/email dictionaries for ta, en, hi, te, kn, ml (pair.ts: compatibility)
 src/server/        server-only code (never import from *.client.tsx - ESLint enforces this)
@@ -125,6 +127,11 @@ tests/             Vitest
 - Age policy: purchaser and every subject 18+. Children's data is not supported.
 - A language is sold only if `enabled` in `src/config/languages.ts` AND `npm run verify:pdf` passes.
 - Policies state only what the system does (retention, timings come from env).
+- SEO: every public page sets a canonical URL and social metadata (`pageMetadata` in
+  `src/server/seo.ts`); JSON-LD only states visible facts (no ratings or reviews).
+  Order forms are `noindex`; private paths are disallowed in robots.ts; the sitemap
+  lists public pages only. The homepage and product pages are static (config only).
+- One icon family: `src/components/site/Glyph.tsx` (24 px grid, 1.3 stroke).
 
 ## Standards
 

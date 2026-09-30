@@ -23,7 +23,7 @@ function IncludesList({ items, note }: { items: readonly string[]; note: string 
 export function LearnSection() {
   const c = HOME.learn;
   return (
-    <section id="learn" aria-labelledby="learn-heading" className="section scroll-mt-16 border-b border-ivory-300 bg-ivory-50">
+    <section id="learn" aria-labelledby="learn-heading" className="section border-b border-ivory-300 bg-ivory-50">
       <div className="container-page">
         <SectionIntro id="learn-heading" eyebrow={c.eyebrow} lines={[c.headline]} supporting={c.supporting} />
         <ul className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-ivory-300 bg-ivory-300 sm:grid-cols-2 lg:grid-cols-3">

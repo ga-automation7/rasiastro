@@ -60,8 +60,8 @@ export const notoSans = localFont({
   src: [
     { path: "../assets/fonts/noto-sans-latin-400-normal.woff2", weight: "400", style: "normal" },
     { path: "../assets/fonts/noto-sans-latin-600-normal.woff2", weight: "600", style: "normal" },
-    { path: "../assets/fonts/noto-sans-latin-700-normal.woff2", weight: "700", style: "normal" },
   ],
+  // 400 and 600 only (bold text uses 600): one fewer preloaded file on first visit.
   variable: "--font-noto",
   display: "swap",
 });

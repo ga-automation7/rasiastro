@@ -7,7 +7,7 @@ import { MaskHeading, Spark, revealDelay } from "./ui";
 export function PricingSection({ personalAvailable, typicalMinutes, maxHours }: { personalAvailable: boolean; typicalMinutes: number; maxHours: number }) {
   const c = HOME.pricing;
   return (
-    <section id="pricing" aria-labelledby="pricing-heading" className="section scroll-mt-16 border-t border-ivory-300">
+    <section id="pricing" aria-labelledby="pricing-heading" className="section border-t border-ivory-300">
       <div className="container-page">
         <div className="grid gap-12 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-16">
           <div className="text-center lg:text-left">
@@ -20,7 +20,7 @@ export function PricingSection({ personalAvailable, typicalMinutes, maxHours }: 
               <span className="text-gold-500">.</span>
             </p>
             {personalAvailable ? (
-              <div className="mt-8" data-reveal style={revealDelay(180)}>
+              <div className="mt-8" data-reveal data-sticky-hide="" style={revealDelay(180)}>
                 <Link href="/start" className="btn btn-primary w-full px-8 text-[1.02rem] tracking-wide sm:w-auto">
                   {c.cta}
                 </Link>

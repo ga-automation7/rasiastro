@@ -48,7 +48,7 @@ export function SiteFooter({ business }: { business: BusinessDetails }) {
         <nav aria-label="Site">
           <p className="mb-3 text-sm font-semibold text-ivory-50">Explore</p>
           <ul className="space-y-2 text-sm">
-            {NAV_LINKS.map((l) => (
+            {NAV_LINKS.filter((l) => !REPORT_LINKS.some((r) => r.href === l.href)).map((l) => (
               <li key={l.href}>
                 <Link className="hover:text-ivory-50" href={l.href}>
                   {l.label}

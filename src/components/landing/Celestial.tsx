@@ -12,29 +12,26 @@ function seeded(seed: number) {
   };
 }
 
+/** A circle as path data, so a whole group of stars is one element (light HTML and payload). */
+const dot = (x: number, y: number, r: number) => `M${(x - r).toFixed(1)} ${y.toFixed(1)}a${r.toFixed(2)} ${r.toFixed(2)} 0 1 0 ${(2 * r).toFixed(2)} 0a${r.toFixed(2)} ${r.toFixed(2)} 0 1 0 ${(-2 * r).toFixed(2)} 0`;
+
 export function StarField({ count = 110, seed = 7, className = "" }: { count?: number; seed?: number; className?: string }) {
   const rand = seeded(seed);
-  const stars = Array.from({ length: count }, (_, i) => {
+  // Three brightness levels, plus a few glinting stars in five timing groups.
+  const levels = ["", "", ""];
+  const glints = ["", "", "", "", ""];
+  for (let i = 0; i < count; i += 1) {
     const x = rand() * 1000;
     const y = rand() * 1000;
     const r = rand() < 0.9 ? 0.5 + rand() * 0.7 : 1.2 + rand() * 0.8;
     const o = 0.25 + rand() * 0.55;
-    return { i, x, y, r, o, glint: i % 17 === 0 };
-  });
+    if (i % 17 === 0) glints[i % 5] += dot(x, y, r);
+    else levels[o < 0.43 ? 0 : o < 0.62 ? 1 : 2] += dot(x, y, r);
+  }
   return (
-    <svg aria-hidden="true" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" className={className}>
-      {stars.map((s) => (
-        <circle
-          key={s.i}
-          cx={s.x.toFixed(1)}
-          cy={s.y.toFixed(1)}
-          r={s.r.toFixed(2)}
-          fill="#f7ecd2"
-          opacity={s.o.toFixed(2)}
-          className={s.glint ? "star-glint" : undefined}
-          style={s.glint ? ({ "--glint-delay": `${(s.i % 5) * 1.3}s` } as React.CSSProperties) : undefined}
-        />
-      ))}
+    <svg aria-hidden="true" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" className={className} fill="#f7ecd2">
+      {levels.map((d, i) => (d ? <path key={i} d={d} opacity={[0.33, 0.52, 0.7][i]} /> : null))}
+      {glints.map((d, i) => (d ? <path key={`g${i}`} d={d} opacity={0.6} className="star-glint" style={{ "--glint-delay": `${i * 1.3}s` } as React.CSSProperties} /> : null))}
     </svg>
   );
 }
@@ -65,12 +62,23 @@ export function Astrolabe({ className = "" }: { className?: string }) {
       <g className="orbit-slow">
         <circle cx={c} cy={c} r="268" stroke={gold} strokeOpacity="0.35" strokeWidth="0.8" />
         <circle cx={c} cy={c} r="248" stroke={gold} strokeOpacity="0.22" strokeWidth="0.6" />
-        {ticks.map((d) => {
-          const long = d % 30 === 0;
-          const [x1, y1] = polar(d, 268);
-          const [x2, y2] = polar(d, long ? 236 : 260);
-          return <line key={d} x1={x1} y1={y1} x2={x2} y2={y2} stroke={gold} strokeOpacity={long ? 0.45 : 0.22} strokeWidth={long ? 0.8 : 0.5} />;
-        })}
+        {/* Degree ticks as two paths (every 5°, and the longer 30° sign boundaries). */}
+        {[false, true].map((long) => (
+          <path
+            key={String(long)}
+            d={ticks
+              .filter((d) => (d % 30 === 0) === long)
+              .map((d) => {
+                const [x1, y1] = polar(d, 268);
+                const [x2, y2] = polar(d, long ? 236 : 260);
+                return `M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}`;
+              })
+              .join("")}
+            stroke={gold}
+            strokeOpacity={long ? 0.45 : 0.22}
+            strokeWidth={long ? 0.8 : 0.5}
+          />
+        ))}
         {RASI.map((name, i) => {
           const [x, y] = polar(i * 30 + 15, 256);
           return (

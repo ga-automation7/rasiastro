@@ -9,7 +9,7 @@ export function TrustSection({ supportEmail }: { supportEmail: string }) {
   const t = HOME.trust;
   const r = HOME.recovery;
   return (
-    <section id="trust" aria-labelledby="trust-heading" className="section scroll-mt-16 border-t border-ivory-300 bg-ivory-50">
+    <section id="trust" aria-labelledby="trust-heading" className="section border-t border-ivory-300 bg-ivory-50">
       <div className="container-page">
         <SectionIntro id="trust-heading" eyebrow={t.eyebrow} lines={[t.headline]} />
         <ul className="mt-12 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">

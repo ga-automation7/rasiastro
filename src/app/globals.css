@@ -84,6 +84,8 @@
   html {
     -webkit-text-size-adjust: 100%;
     scroll-behavior: smooth;
+    /* Anything scrolled into view (anchors, focused fields) clears the sticky header. */
+    scroll-padding-top: 5.5rem;
   }
   body {
     background-color: var(--color-ivory-100);
@@ -502,3 +504,11 @@ html.js .tradition-tabs [data-panel]:not([data-selected]) { display: none; }
 .stage-orbit { animation: stage-orbit 2.4s linear infinite; }
 .stage-orbit-slow { animation: stage-orbit 7s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .stage-orbit, .stage-orbit-slow { animation: none; } }
+
+/* Phones: a shorter hero intro, so the page is readable sooner on slower devices. */
+@media (max-width: 767px) {
+  .intro-veil { animation-duration: 500ms; }
+  .intro-rise { animation-duration: 450ms; animation-delay: calc(var(--intro-delay, 0ms) * 0.4); }
+  .intro-line > span { animation-duration: 600ms; animation-delay: calc(var(--intro-delay, 0ms) * 0.4); }
+  .intro-fade { animation-duration: 900ms; }
+}

@@ -5,8 +5,9 @@ import { useEffect, useState } from "react";
 
 /**
  * A discreet bar for phones and tablets: it slides in once the hero is out of view,
- * steps aside while the closing call to action or the footer is on screen (so legal
- * links are never covered), and hides while a text field has focus (keyboard open).
+ * steps aside while another call to action ([data-sticky-hide]) or the footer is on
+ * screen (so it never doubles a button or covers legal links), and hides while a text
+ * field has focus (keyboard open).
  * When hidden it is also removed from the tab order and the accessibility tree.
  */
 export function StickyCta({ href, label, note }: { href: string; label: string; note: string }) {
@@ -16,7 +17,7 @@ export function StickyCta({ href, label, note }: { href: string; label: string; 
 
   useEffect(() => {
     const hero = document.getElementById("hero");
-    const ends = [document.getElementById("begin"), document.querySelector("footer")].filter((el): el is HTMLElement => Boolean(el));
+    const ends = [...Array.from(document.querySelectorAll<HTMLElement>("[data-sticky-hide]")), document.querySelector("footer")].filter((el): el is HTMLElement => Boolean(el));
     const heroObserver = new IntersectionObserver(([entry]) => setPastHero(Boolean(entry && !entry.isIntersecting && entry.boundingClientRect.top < 0)));
     const visibleEnds = new Set<Element>();
     const endObserver = new IntersectionObserver((entries) => {

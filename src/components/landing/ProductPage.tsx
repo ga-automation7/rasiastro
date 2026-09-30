@@ -94,8 +94,8 @@ export function ProductSections({ copy }: { copy: LandingCopy }) {
       </aside>
       <div className="max-w-3xl space-y-14">
         {copy.sections.map((s, i) => (
-          <section key={s.heading} id={`section-${i + 1}`} aria-labelledby={`section-${i + 1}-heading`} className="scroll-mt-24">
-            <h2 id={`section-${i + 1}-heading`} className="font-display text-[var(--step-2)] leading-tight text-ink-950">
+          <section key={s.heading} id={`section-${i + 1}`} aria-labelledby={`section-${i + 1}-heading`}>
+            <h2 id={`section-${i + 1}-heading`} className="font-display text-[length:var(--step-2)] leading-tight text-ink-950">
               {s.heading}
             </h2>
             {s.paragraphs?.map((p) => (
@@ -116,9 +116,9 @@ export function ProductSections({ copy }: { copy: LandingCopy }) {
           </section>
         ))}
 
-        <section id="questions" aria-labelledby="questions-heading" className="scroll-mt-24">
+        <section id="questions" aria-labelledby="questions-heading">
           <StarRule className="mb-10" />
-          <h2 id="questions-heading" className="font-display text-[var(--step-2)] leading-tight text-ink-950">
+          <h2 id="questions-heading" className="font-display text-[length:var(--step-2)] leading-tight text-ink-950">
             Questions
           </h2>
           <div className="mt-5 divide-y divide-ivory-300 border-y border-ivory-300">

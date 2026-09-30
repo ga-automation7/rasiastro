@@ -17,7 +17,7 @@ export function CompatibilitySection({ available, pausedMessage }: { available: 
   const c = COPY.compatibility;
   const h = HOME.compatibility;
   return (
-    <section id="compatibility" aria-labelledby="compatibility-heading" className="relative scroll-mt-16 overflow-hidden text-ivory-100" style={{ backgroundColor: ART.compatibility.night }}>
+    <section id="compatibility" aria-labelledby="compatibility-heading" className="relative overflow-hidden text-ivory-100" style={{ backgroundColor: ART.compatibility.night }}>
       <div
         className="absolute inset-x-0 bottom-0 hidden [mask-image:linear-gradient(to_bottom,transparent,black_24%)] lg:block"
         style={{ aspectRatio: `${bg.width} / ${bg.height}` }}

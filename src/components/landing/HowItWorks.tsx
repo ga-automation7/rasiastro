@@ -6,7 +6,7 @@ import { MaskHeading, Spark, revealDelay } from "./ui";
 export function HowItWorks() {
   const e = HOME.engine;
   return (
-    <section id="how-it-works" aria-labelledby="engine-heading" className="relative isolate scroll-mt-16 overflow-hidden bg-(--color-midnight) text-ivory-100">
+    <section id="how-it-works" aria-labelledby="engine-heading" className="relative isolate overflow-hidden bg-(--color-midnight) text-ivory-100">
       <div aria-hidden="true" className="absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_55%_40%_at_50%_45%,rgb(40_51_108/0.3),transparent_70%),linear-gradient(180deg,#070c17,#0a1426)]" />
         <StarField count={28} seed={21} className="absolute inset-0 h-full w-full opacity-50" />

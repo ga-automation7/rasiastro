@@ -45,7 +45,7 @@ export default function HomePage() {
       <TraditionsLanguages />
       <TrustSection supportEmail={env.SUPPORT_EMAIL} />
       <FinalCta personalAvailable={personal.available} compatibilityAvailable={compatibility.available} />
-      {personal.available ? <StickyCta href="/start" label={`Get my report · ${PRICE.personal}`} note="Your personal astrology report" /> : null}
+      {personal.available ? <StickyCta href="/start" label={`Get my report · ${PRICE.personal}`} note="Personal report" /> : null}
     </>
   );
 }

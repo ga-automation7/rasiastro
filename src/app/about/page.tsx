@@ -76,7 +76,7 @@ export default function AboutPage() {
       <div className="container-page max-w-3xl space-y-12 py-[var(--space-section)]">
         {SECTIONS.map((s) => (
           <section key={s.heading}>
-            <h2 className="font-display text-[var(--step-2)] leading-tight text-ink-950">{s.heading}</h2>
+            <h2 className="font-display text-[length:var(--step-2)] leading-tight text-ink-950">{s.heading}</h2>
             {s.paragraphs.map((p) => (
               <p key={p} className="mt-4 text-[1.02rem] leading-[1.75] text-ink-800">
                 {p}
@@ -86,7 +86,7 @@ export default function AboutPage() {
         ))}
         <section>
           <StarRule className="mb-10" />
-          <h2 className="font-display text-[var(--step-2)] leading-tight text-ink-950">Who we are</h2>
+          <h2 className="font-display text-[length:var(--step-2)] leading-tight text-ink-950">Who we are</h2>
           <p className="mt-4 text-[1.02rem] leading-[1.75] text-ink-800">
             {env.BUSINESS_LEGAL_NAME ? `Rasi Astro is operated by ${env.BUSINESS_LEGAL_NAME}${env.BUSINESS_ADDRESS ? `, ${env.BUSINESS_ADDRESS}` : ""}. ` : ""}
             Write to us at{" "}

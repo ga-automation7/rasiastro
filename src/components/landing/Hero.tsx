@@ -17,7 +17,7 @@ export function Hero({ personalAvailable, compatibilityAvailable, closedMessage 
       <div aria-hidden="true" className="absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_60%_at_72%_38%,rgb(40_51_108/0.55),transparent_70%),radial-gradient(ellipse_60%_50%_at_12%_90%,rgb(122_86_26/0.18),transparent_70%),linear-gradient(180deg,#070c17_0%,#0a1523_60%,#0b1628_100%)]" />
         <StarField className="intro-fade absolute inset-0 h-full w-full" />
-        <div className="absolute inset-0 opacity-70 mix-blend-soft-light [background-image:var(--night-grain)]" />
+        <div className="absolute inset-0 hidden opacity-70 mix-blend-soft-light [background-image:var(--night-grain)] lg:block" />
         <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-b from-transparent to-(--color-midnight)" />
       </div>
 

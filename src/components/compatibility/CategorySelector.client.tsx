@@ -1,14 +1,13 @@
 "use client";
 
-import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import { useId } from "react";
 import { COMPATIBILITY_CATEGORIES, type CompatibilityCategory } from "@/config/compatibility";
 
 /**
  * Single-select connection category. Built on native radio inputs, so it is a proper
  * radio group for assistive technology, arrow keys move the selection, and it works
- * inside a plain <form> even before JavaScript loads. The moving highlight is purely
- * decorative (and skipped for reduced motion).
+ * inside a plain <form> even before JavaScript loads. The highlight is a CSS transition
+ * (switched off for reduced motion), so no animation library is needed.
  */
 export function CategorySelector({
   value,
@@ -27,7 +26,6 @@ export function CategorySelector({
   legendHidden?: boolean;
   error?: string | null;
 }) {
-  const reduce = useReducedMotion();
   const group = useId();
   const selected = COMPATIBILITY_CATEGORIES.find((c) => c.key === value) ?? null;
   const dark = tone === "dark";
@@ -35,8 +33,7 @@ export function CategorySelector({
   return (
     <fieldset aria-describedby={`${group}-desc${error ? ` ${group}-error` : ""}`}>
       <legend className={legendHidden ? "sr-only" : `field-label ${dark ? "!text-ivory-100" : ""}`}>{legend}</legend>
-      <LayoutGroup id={group}>
-        <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2">
           {COMPATIBILITY_CATEGORIES.map((c) => {
             const checked = value === c.key;
             return (
@@ -52,14 +49,10 @@ export function CategorySelector({
                       : "text-ink-900 ring-1 ring-ink-800/25 hover:ring-ink-800/60"
                 }`}
               >
-                {checked ? (
-                  <motion.span
-                    layoutId={`${group}-pill`}
-                    aria-hidden="true"
-                    className={`absolute inset-0 rounded-full ${dark ? "bg-gold-300" : "bg-ink-800"}`}
-                    transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 38, mass: 0.7 }}
-                  />
-                ) : null}
+                <span
+                  aria-hidden="true"
+                  className={`absolute inset-0 rounded-full transition-[opacity,transform] duration-200 ease-[var(--ease-soft)] ${checked ? "scale-100 opacity-100" : "scale-90 opacity-0"} ${dark ? "bg-gold-300" : "bg-ink-800"}`}
+                />
                 <input
                   type="radio"
                   name={name}
@@ -72,8 +65,7 @@ export function CategorySelector({
               </label>
             );
           })}
-        </div>
-      </LayoutGroup>
+      </div>
       <p id={`${group}-desc`} aria-live="polite" className={`mt-3 min-h-6 text-[0.95rem] ${dark ? "text-ivory-200" : "text-muted"}`}>
         {selected ? selected.description : "Choose the kind of connection you want to understand."}
       </p>

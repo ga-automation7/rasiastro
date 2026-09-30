@@ -38,7 +38,7 @@ function StageIcon({ state }: { state: StageState }) {
         <span className="h-2 w-2 rounded-full bg-gold-500" />
       </span>
     );
-  if (state === "failed") return <span className="flex h-8 w-8 items-center justify-center rounded-full bg-danger font-bold text-white">!</span>;
+  if (state === "failed") return <span className="flex h-8 w-8 items-center justify-center rounded-full bg-danger font-semibold text-white">!</span>;
   return <span className="flex h-8 w-8 items-center justify-center rounded-full border border-ivory-300 bg-white"><span className="h-1.5 w-1.5 rounded-full bg-ivory-300" /></span>;
 }
 

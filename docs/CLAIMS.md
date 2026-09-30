@@ -2,7 +2,7 @@
 
 Every concrete thing the website promises must be something the product actually
 produces. Marketing copy lives in `src/content/site-copy.ts`, the FAQ in
-`src/components/landing/Faq.tsx`, and the policies in `src/app/*/page.tsx`.
+`src/content/faq.ts`, the product pages in `src/content/landing.ts`, and the policies in `src/app/*/page.tsx`.
 Check this list before adding or changing a claim. Reviewed 30 September 2026.
 
 ## Claims made, and where they are produced
@@ -29,7 +29,13 @@ Check this list before adding or changing a claim. Reviewed 30 September 2026.
 | Names, email, phone and birthplace not sent to the AI | `input.ts`, `pair-input.ts` (`maskNames`); tests |
 | Checked automatically for structure, completeness and language | `validate.ts`, `pair-validate.ts` |
 | "Frontier AI", "advanced AI" (homepage hero, engine section, trust line) | Production `OPENAI_MODEL` is a current flagship generation model. The model and provider are never named. **Re-check this wording whenever OPENAI_MODEL changes**; drop "frontier" if a smaller or older model is used. |
-| Homepage report previews | `src/server/reports/preview.ts` quotes the public SAMPLE report (`sample.ts`): a fictional person, a genuinely calculated chart, hand-written illustrative text, labelled as a sample on the page |
+| "What exactly will I learn?" (chart and meanings, personality and patterns, career, relationships, money and growth, periods behind and ahead with opportunities and challenges, traditions compared, summary and questions) | report sections in `render.ts`: chartExplanations, overview, perspectives, lifeAreas (career, relationships, personalGrowth, money), lookingBack, lookingAhead (opportunities, challenges), agreeDiffer, combinedSummary, questionAnswers |
+| Turnaround: "starts as soon as your payment is confirmed", "most ready in about N minutes", "aim to deliver within N hours" | outbox dispatch on payment (`applyPaymentEvidence`); N from `DELIVERY_TYPICAL_MINUTES` / `DELIVERY_MAX_HOURS` (set from measured live timings) |
+| Systems: sidereal zodiac with Lahiri (Chitrapaksha) ayanamsa, whole sign houses from the Lagna, Vimshottari dasha; tropical zodiac with Placidus (Porphyry at extreme latitudes) | `ayanamsa.ts`, `vedic.ts` (houseSystem whole_sign), `dasha.ts`, `western.ts` (placidus / porphyry) |
+| Compatibility factors: Moon sign relationship, Tara, Gana, Graha Maitri; Yoni and Nadi only for relationship and marriage; Western synastry contacts and house overlays when birth times allow | `src/server/astrology/compatibility.ts` (CATEGORY_ANALYSIS, romantic filter, overlaysOmitted) |
+| Trust: "no advertising or analytics trackers"; "we never see your card details or your UPI PIN" | no tracker scripts in the codebase (Privacy Policy says the same); payments happen on the provider's page or in the customer's UPI app |
+| Order status stage wording (calculating your chart, writing your interpretation, creating your report and PDF) | the same real stages from `src/server/orders/status.ts`; wording only, no invented progress |
+| Homepage report previews | `src/server/reports/preview.ts` quotes the public SAMPLE report (`sample.ts`): a fictional person, a genuinely calculated chart, hand-written illustrative text, labelled as a sample on the page. Six pages: cover, Rasi chart, overview, planetary positions, looking ahead, summary |
 | "No subscription · Downloadable PDF · No account required"; recovery by email | one-off orders; `/api/orders/:id/pdf`; access tokens; `/recover` |
 | Reports prepared in the background, usually within `DELIVERY_TYPICAL_MINUTES` | Inngest pipeline; value is a setting to be measured in sandbox |
 | Retries never cost extra; reopening never pays again | idempotent pipeline; access by link |

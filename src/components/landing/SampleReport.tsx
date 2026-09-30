@@ -149,7 +149,7 @@ export async function SampleReport({ available }: { available: boolean }) {
   ];
 
   return (
-    <section id="report" aria-labelledby="sample-heading" className="section scroll-mt-16 overflow-hidden">
+    <section id="report" aria-labelledby="sample-heading" className="section overflow-hidden">
       <style>{p.chartCss}</style>
       <div className="container-page">
         <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">

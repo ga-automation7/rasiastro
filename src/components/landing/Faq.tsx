@@ -34,7 +34,7 @@ function Item({ item }: { item: FaqItem }) {
 export function Faq({ typicalMinutes, maxHours }: { typicalMinutes: number; maxHours: number }) {
   const first = purchaseFaq(typicalMinutes, maxHours);
   return (
-    <section id="faq" aria-labelledby="faq-heading" className="section scroll-mt-16 bg-ivory-50 [border-block:1px_solid_var(--color-ivory-300)]">
+    <section id="faq" aria-labelledby="faq-heading" className="section bg-ivory-50 [border-block:1px_solid_var(--color-ivory-300)]">
       <div className="container-page grid gap-10 lg:grid-cols-[1fr_1.6fr] lg:gap-16">
         <div data-reveal className="lg:sticky lg:top-24 lg:self-start">
           <p className="eyebrow">Before you buy</p>

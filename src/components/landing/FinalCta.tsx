@@ -8,7 +8,7 @@ export function FinalCta({ personalAvailable, compatibilityAvailable }: { person
   const f = HOME.final;
   if (!personalAvailable && !compatibilityAvailable) return null;
   return (
-    <section id="begin" aria-labelledby="final-heading" className="relative isolate overflow-hidden bg-(--color-midnight) text-ivory-100">
+    <section id="begin" data-sticky-hide="" aria-labelledby="final-heading" className="relative isolate overflow-hidden bg-(--color-midnight) text-ivory-100">
       <div aria-hidden="true" className="absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_70%_at_50%_100%,rgb(40_51_108/0.45),transparent_70%)]" />
         <StarField count={36} seed={7} className="absolute inset-0 h-full w-full opacity-60" />
