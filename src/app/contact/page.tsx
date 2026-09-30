@@ -35,7 +35,8 @@ export default function ContactPage() {
           <tr>
             <th scope="row">Customer support</th>
             <td>
-              <a href={`mailto:${b.supportEmail}`}>{b.supportEmail}</a> · {b.supportPhone}
+              <a href={`mailto:${b.supportEmail}`}>{b.supportEmail}</a>
+              {b.supportPhone ? ` · ${b.supportPhone}` : null}
             </td>
           </tr>
         </tbody>
@@ -58,10 +59,12 @@ export default function ContactPage() {
               <a href={`mailto:${b.grievanceEmail}`}>{b.grievanceEmail}</a>
             </td>
           </tr>
-          <tr>
-            <th scope="row">Phone</th>
-            <td>{b.grievancePhone}</td>
-          </tr>
+          {b.grievancePhone ? (
+            <tr>
+              <th scope="row">Phone</th>
+              <td>{b.grievancePhone}</td>
+            </tr>
+          ) : null}
         </tbody>
       </table>
       <p>The Grievance Officer also handles privacy requests (access, correction, deletion and consent withdrawal).</p>

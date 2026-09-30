@@ -97,8 +97,9 @@ export function getConfigChecks(env: Env = getEnv()): ConfigCheck[] {
       add(
         "business_details",
         "Business and grievance-officer details",
-        Boolean(env.BUSINESS_LEGAL_NAME && env.BUSINESS_ADDRESS && env.GRIEVANCE_OFFICER_NAME && env.SUPPORT_PHONE),
-        "Set BUSINESS_LEGAL_NAME, BUSINESS_ADDRESS, GRIEVANCE_OFFICER_NAME and SUPPORT_PHONE (shown on the policy and contact pages, required for Indian e-commerce).",
+        // A phone number is optional (the owner's choice); the support email is always shown.
+        Boolean(env.BUSINESS_LEGAL_NAME && env.BUSINESS_ADDRESS && env.GRIEVANCE_OFFICER_NAME),
+        "Set BUSINESS_LEGAL_NAME, BUSINESS_ADDRESS and GRIEVANCE_OFFICER_NAME (shown on the policy and contact pages, required for Indian e-commerce). SUPPORT_PHONE is optional.",
       );
     }
   }

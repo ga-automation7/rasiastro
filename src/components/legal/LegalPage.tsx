@@ -21,11 +21,12 @@ export function businessDetails() {
     registration: env.BUSINESS_REGISTRATION ?? null,
     gstin: env.BUSINESS_GSTIN ?? null,
     supportEmail: env.SUPPORT_EMAIL,
-    supportPhone: env.SUPPORT_PHONE ?? MISSING,
+    /** Optional: when empty, pages show the email address only. */
+    supportPhone: env.SUPPORT_PHONE ?? null,
     grievanceName: env.GRIEVANCE_OFFICER_NAME ?? MISSING,
     grievanceDesignation: env.GRIEVANCE_OFFICER_DESIGNATION ?? "Grievance Officer",
     grievanceEmail: env.GRIEVANCE_OFFICER_EMAIL ?? env.SUPPORT_EMAIL,
-    grievancePhone: env.GRIEVANCE_OFFICER_PHONE ?? env.SUPPORT_PHONE ?? MISSING,
+    grievancePhone: env.GRIEVANCE_OFFICER_PHONE ?? env.SUPPORT_PHONE ?? null,
     unpaidDays: env.RETENTION_UNPAID_DAYS,
     reportDays: env.RETENTION_REPORT_DAYS,
     linkDays: env.ACCESS_LINK_TTL_DAYS,
@@ -46,7 +47,8 @@ export function OperatorBlock({ b }: { b: BusinessDetails }) {
     <p>
       Rasi Astro (rasiastro.com) is operated by <strong>{b.legalName}</strong>
       {b.registration ? `, ${b.registration}` : ""}, {b.address}
-      {b.gstin ? `. GSTIN: ${b.gstin}` : ""}. Contact: <a href={`mailto:${b.supportEmail}`}>{b.supportEmail}</a>, phone {b.supportPhone}.
+      {b.gstin ? `. GSTIN: ${b.gstin}` : ""}. Contact: <a href={`mailto:${b.supportEmail}`}>{b.supportEmail}</a>
+      {b.supportPhone ? `, phone ${b.supportPhone}` : ""}.
     </p>
   );
 }
